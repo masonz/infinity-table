@@ -1,7 +1,9 @@
 <template>
   <div id="app">
-    <infinity-table :data="data"
-                    :columns="columns">
+    <infinity-table style="margin: 0 50px;"
+                    :data="data"
+                    :column-defs="columnDefs"
+                    :height="500">
     </infinity-table>
   </div>
 </template>
@@ -20,24 +22,29 @@ export default class App extends Vue {
 
   public mounted() {
     this.data = []
-    for (let i = 1; i < 1; i++) {
+    for (let i = 0; i < 100; i++) {
       this.data.push({
         id: i,
         name: `name_${i}`,
         class: `class_${i}`,
-        teacher: `teacher_${i}`,
+        teacher: `teacher_${i}teacher_${i}teacher_${i}`,
         school: `school_${i}`,
         country: `country_${i}`,
       })
     }
   }
 
-  get columns() {
+  get columnDefs() {
     const colunms: any[] = []
     const firstRow = this.data.find((row) => row.id === 1)
     if (firstRow) {
-      Object.keys(firstRow).forEach((key) => {
-        colunms.push({ filed: key, title: key })
+      Object.keys(firstRow).forEach((key, i) => {
+        colunms.push({
+          filed: key,
+          title: key,
+          width: 100 + i * 10,
+          fixed: i === 0 ? 'left' : false,
+        })
       })
     }
     return colunms

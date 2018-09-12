@@ -1,40 +1,84 @@
 <template>
-  <div class="infinity-table-wrapper infinity-table--border">
-    <table class="infinity-table"
-           cellspacing="0"
-           cellpadding="0"
-           border="0">
-      <div :style="tbodyStyle">
-        <thead>
-          <tr class="table-header">
-            <th v-for="(column, i) in columns"
-                :key="`column${i}`"
-                class="table-header-cell">
-              {{ column.title }}
-            </th>
-          </tr>
-        </thead>
+  <div class="infinity-table-wrapper">
+    <div class="infinity-table infinity-table--border"
+         :style="tableStyle">
+
+      <!-- 表头部分 -->
+      <div ref="thead"
+           class="infinity-table__header">
+        <div ref="theadFixLeft"
+             class="table__header--fix-left"
+             v-show="showHeadLeftFixed">
+          <div class="infinity-table__row">
+            <div class="infinity-table__cell header-label"
+                 v-for="(column, i) in colFixedLeft"
+                 :key="`column_header-fixLeft-${i}`"
+                 :style="getColStyle(column)">
+              <span>{{ column.title }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="table__header--viewport"
+             :style="headerViewPort">
+          <div class="infinity-table__row">
+            <div class="infinity-table__cell header-label"
+                 v-for="(column, i) in columns"
+                 :key="`column_header-${i}`"
+                 :style="getColStyle(column)">
+              <span>{{ column.title }}</span>
+            </div>
+          </div>
+        </div>
+        <div ref="theadFixRight"
+             class="table__header--fix-right"
+             v-show="showHeadRightFixed">
+          <div class="infinity-table__row">
+            <div class="infinity-table__cell header-label"
+                 v-for="(column, i) in colFixedRight"
+                 :key="`column_header-fixRight-${i}`"
+                 :style="getColStyle(column)">
+              <span>{{ column.title }}</span>
+            </div>
+          </div>
+        </div>
       </div>
-      <div ref="tbodyWrapper"
-           class="table-tbody-wrapper"
+      <!-- 表头部分 -->
+
+      <!-- 表格部分 -->
+      <div class="infinity-table__body"
+           ref="body"
            :style="tbodyStyle"
            @scroll="onScroll">
-        <tbody>
-          <tr v-for="(row, i) in data"
-              :key="`row_${i}`"
-              class="table-row">
-            <template v-if="isShowInViewPort(i)">
-              <td v-for="(column, cIndex) in columns"
-                  :key="`row_${i}-column_${cIndex}`"
-                  class="table-body-cell">
-                {{ row[column.filed] }}
-              </td>
-            </template>
-          </tr>
-        </tbody>
+        <div class="table__body--fix-left"></div>
+        <div class="table__body--viewport"
+             :style="{ height: data.length * 38 + 'px' }">
+          <div class="infinity-table__row"
+               v-for="row in dataView"
+               :key="`row_${row.id}`"
+               :style="{ position: 'absolute', transform: `translateY(${row.id * 38}px)`}">
+            <div v-for="(column, i) in columnDefs"
+                 :key="`column_cell-${i}`"
+                 :style="getColStyle(column)"
+                 class="infinity-table__cell">
+              <span :title="row[column.filed]">{{ row[column.filed] }}</span>
+            </div>
+          </div>
+        </div>
+        <div class="table__body--fix-right"></div>
       </div>
-    </table>
+      <!-- 表格部分 -->
+
+      <!-- 表格底部 -->
+      <div class="infinity-table__foot">
+        <div class="table__foot--fix-left"></div>
+        <div class="table__foot--viewport"></div>
+        <div class="table__body--fix-right"></div>
+      </div>
+      <!-- 表格底部 -->
+
+    </div>
   </div>
+
 </template>
 
 <script lang="ts">
@@ -43,40 +87,111 @@ import { Component, Prop, Vue } from 'vue-property-decorator'
 @Component
 export default class InfinityTable extends Vue {
   @Prop({ default: 0 })
-  private maxHeight!: number
+  private height!: number
 
   @Prop({ default: () => [] })
   private data!: any[]
 
   @Prop({ default: () => [] })
-  private columns!: any[]
+  private columnDefs!: any[]
 
-  private indexArr: any[] = []
   private rowNodes: Element[] = []
+  private dataView: any[] = []
+  private scrollAchor: number = 0
+  private headerViewPort = {}
+  private tbodyStyle = {}
   private timer: any = null
 
-  // tbody的动态样式
-  get tbodyStyle() {
+  private showHeadRightFixed: boolean = false
+
+  // table的动态样式
+  get tableStyle() {
     return {
-      maxHeight: this.maxHeight ? this.maxHeight + 'px' : null,
-      overflow: 'auto',
+      height: this.height ? this.height + 'px' : '100vh',
     }
+  }
+
+  get columns() {
+    return this.columnDefs.filter((x) => !x.fixed)
+  }
+
+  get colFixedLeft() {
+    return this.columnDefs.filter((x) => x.fixed && x.fixed === 'left')
+  }
+
+  get showHeadLeftFixed(): boolean {
+    return Boolean(this.colFixedLeft.length)
+  }
+
+  get colFixedRight() {
+    return this.columnDefs.filter((x) => x.fixed && x.fixed === 'right')
+  }
+
+  get viewEl(): Element {
+    return this.$refs.body as Element
+  }
+
+  // 显示行数
+  public getShowRowCount(): number {
+    return Math.ceil(this.height / 39)
+  }
+
+  // 行样式
+  public getRowStyle(index: number) {
+    return {
+      // transform: `translateY(${index * 34}px)`
+    }
+  }
+
+  // 单元格样式
+  public getColStyle(column: any) {
+    const style = {
+      width: '',
+      minWidth: '',
+    }
+    if (column.width) {
+      style.width = `${column.width + 'px'}`
+    } else if (column.minWidth) {
+      style.minWidth = column.minWidth + 'px'
+    } else {
+      style.minWidth = 'fit-content'
+    }
+    return style
   }
 
   // 组件生命周期
   public async mounted() {
     await this.$nextTick()
-    this.rowNodes = Array.from(document.querySelectorAll('.table-row'))
+    const count = this.getShowRowCount()
+    for (let index = 0; index < count; index++) {
+      const row = this.data.findIndex((x) => x === index)
+      if (row) {
+        this.dataView.push(row)
+      }
+    }
     this.updateRenderRowIndex()
+    this.renderTableHeader()
+    this.renderTableBody()
+
+    // let observer = new window.ResizeObserver(this.onResize)
+    // observer.observe(<Element>this.$refs.table)
   }
 
-  /**
-   * 是否在视图显示某一行
-   * @param {number} index
-   * @returns boolean
-   */
-  private isShowInViewPort(index: number): boolean {
-    return this.indexArr.includes(index)
+  public renderTableHeader() {
+    const theadFixLeft = this.$refs.theadFixLeft as HTMLElement
+    this.headerViewPort = {
+      marginLeft: theadFixLeft ? `${theadFixLeft.scrollWidth}px` : '0px',
+    }
+  }
+
+  public renderTableBody() {
+    const thead = this.$refs.thead as HTMLElement
+    this.tbodyStyle = {
+      height: this.height ? this.height - thead.clientHeight + 'px' : '100vh',
+      overflowY: 'auto',
+      overflowX: 'auto',
+      top: thead ? thead.clientHeight : '38px',
+    }
   }
 
   /**
@@ -88,44 +203,22 @@ export default class InfinityTable extends Vue {
       this.updateRenderRowIndex()
       clearInterval(this.timer)
       this.timer = null
-    }, 50)
+    }, 20)
   }
 
   /**
    * 更新所有需要显示行数的下标数组
    */
   private updateRenderRowIndex() {
-    const indexArr: any[] = []
-    this.rowNodes.forEach((node, index) => {
-      const isElementInView = this.isElementInViewPort(
-        node as HTMLElement,
-        this.$refs.tbodyWrapper as HTMLElement,
-      )
-      if (isElementInView) {
-        indexArr.push(index)
-      }
-    })
-    this.indexArr = indexArr
-  }
-
-  /**
-   * 判断element是否在当前视图内
-   * @param  {HTMLElement} el
-   * @param  {HTMLElement} viewEl
-   * @returns boolean
-   */
-  private isElementInViewPort(el: HTMLElement, viewEl: HTMLElement): boolean {
-    if (!el || !viewEl) {
-      return false
+    let index = Math.floor(this.viewEl.scrollTop / 38)
+    const showCount = this.getShowRowCount()
+    const count = index + showCount
+    const indexArr: number[] = []
+    for (index; index < count; index++) {
+      indexArr.push(index)
     }
-
-    const curElHeight = el.clientHeight
-    const viewTop = viewEl.scrollTop
-    const viewBottom = viewTop + viewEl.clientHeight
-    const elTop = el.offsetTop
-    const elBottom = elTop + el.clientHeight
-
-    return elTop <= viewBottom + curElHeight && elBottom >= viewTop
+    this.dataView = this.data.filter((x, i) => indexArr.includes(x.id))
+    this.scrollAchor = this.viewEl.scrollTop
   }
 }
 </script>
@@ -133,50 +226,93 @@ export default class InfinityTable extends Vue {
 <style lang="scss">
 $border-color: #ebeef5;
 
+@mixin ellipsis {
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
 .infinity-table-wrapper {
-  overflow: auto;
-  position: relative;
-  display: inline-block;
+  overflow: hidden;
+
+  * {
+    box-sizing: border-box;
+  }
 }
 
 .infinity-table {
-  border-collapse: collapse;
-  width: 100%;
   height: 100%;
+  overflow: hidden;
+  position: relative;
 }
 
-.infinity-table * {
-  box-sizing: border-box;
+.infinity-table__cell {
+  display: block;
+  height: 100%;
+  width: 100%;
+  padding: 8px 12px;
+
+  @include ellipsis;
 }
 
-.table-header {
-  table-layout: fixed;
-}
-
-tr {
+.infinity-table__row {
   display: flex;
-  min-height: 40px;
+  white-space: nowrap;
+  width: 100%;
+  min-height: 34px;
 }
 
-td,
-th {
-  padding: 0;
-  margin: 0;
-  min-width: 150px;
+.infinity-table__header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  background-color: #f5f7f7;
+  color: rgba(0, 0, 0, 0.54);
+
+  .table__header--fix-left,
+  .table__header--viewport,
+  .table__header--fix-right {
+    display: inline-block;
+    box-sizing: border-box;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .table__header--viewport {
+    display: block;
+
+    .infinity-table__row {
+      margin-left: -1px;
+    }
+  }
+
+  .table__header--fix-left {
+    float: left;
+  }
+
+  .table__header--fix-right {
+    float: right;
+  }
+
+  &.fixed {
+    position: fixed;
+  }
 }
 
-.table-header-cell,
-.table-body-cell {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
+.infinity-table__body {
+  position: absolute;
+  top: 38px;
+  left: 0;
+  width: 100%;
 }
 
 .infinity-table--border {
   border: 1px solid $border-color;
 
-  .table-header-cell {
+  .infinity-table__cell {
     border-bottom: 1px solid $border-color;
     border-left: 1px solid $border-color;
     &:first-child {
@@ -184,14 +320,18 @@ th {
     }
   }
 
-  .table-body-cell {
+  .infinity-table__cell {
     border-bottom: 1px solid $border-color;
-    & + .table-body-cell {
+    & + .infinity-table__cell {
       border-left: 1px solid $border-color;
     }
     &:first-child {
       border-left: none;
     }
+  }
+
+  .table__header--fix-left {
+    border-right: 1px solid $border-color;
   }
 }
 </style>
