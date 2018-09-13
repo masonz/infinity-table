@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <infinity-table style="margin: 0 50px;"
+    <infinity-table style="margin: 0 100px;"
                     :data="data"
                     :column-defs="columnDefs"
                     :height="500">
@@ -22,7 +22,7 @@ export default class App extends Vue {
 
   public mounted() {
     this.data = []
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 5000; i++) {
       this.data.push({
         id: i,
         name: `name_${i}`,
@@ -42,8 +42,8 @@ export default class App extends Vue {
         colunms.push({
           filed: key,
           title: key,
-          width: 100 + i * 10,
-          fixed: i === 0 ? 'left' : false,
+          width: 100 + i * 20,
+          fixed: i <= 1 ? 'left' : false,
         })
       })
     }

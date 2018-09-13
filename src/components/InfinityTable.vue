@@ -8,7 +8,7 @@
            class="infinity-table__header">
         <div ref="theadFixLeft"
              class="table__header--fix-left"
-             v-show="showHeadLeftFixed">
+             v-show="showLeftFixed">
           <div class="infinity-table__row">
             <div class="infinity-table__cell header-label"
                  v-for="(column, i) in colFixedLeft"
@@ -19,19 +19,21 @@
           </div>
         </div>
         <div class="table__header--viewport"
-             :style="headerViewPort">
-          <div class="infinity-table__row">
-            <div class="infinity-table__cell header-label"
-                 v-for="(column, i) in columns"
-                 :key="`column_header-${i}`"
-                 :style="getColStyle(column)">
-              <span>{{ column.title }}</span>
+             :style="theadMiddleWrapStyle">
+          <div :style="theadMiddleStyle">
+            <div class="infinity-table__row">
+              <div class="infinity-table__cell header-label"
+                   v-for="(column, i) in columns"
+                   :key="`column_header-${i}`"
+                   :style="getColStyle(column)">
+                <span>{{ column.title }}</span>
+              </div>
             </div>
           </div>
         </div>
         <div ref="theadFixRight"
              class="table__header--fix-right"
-             v-show="showHeadRightFixed">
+             v-show="showRightFixed">
           <div class="infinity-table__row">
             <div class="infinity-table__cell header-label"
                  v-for="(column, i) in colFixedRight"
@@ -46,21 +48,44 @@
 
       <!-- 表格部分 -->
       <div class="infinity-table__body"
-           ref="body"
-           :style="tbodyStyle"
-           @scroll="onScroll">
-        <div class="table__body--fix-left"></div>
+           :style="tbodyStyle">
+        <div class="table__body--fix-left"
+             ref="tbodyFixedLeft"
+             v-if="showLeftFixed">
+          <div class="table__body_containner"
+               :style="tbodyLeftStyle">
+            <div :style="tbodyLeftWrapStyle">
+              <div class="infinity-table__row"
+                   v-for="row in dataView"
+                   :key="`row_${row.id}`"
+                   :style="{ position: 'absolute', transform: `translateY(${row.id * rowHeight}px)`}">
+                <div v-for="(column, i) in colFixedLeft"
+                     :key="`column_cell-${i}`"
+                     :style="getColStyle(column)"
+                     class="infinity-table__cell">
+                  <span :title="row[column.filed]">{{ row[column.filed] }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="table__body--viewport"
-             :style="{ height: data.length * 38 + 'px' }">
-          <div class="infinity-table__row"
-               v-for="row in dataView"
-               :key="`row_${row.id}`"
-               :style="{ position: 'absolute', transform: `translateY(${row.id * 38}px)`}">
-            <div v-for="(column, i) in columnDefs"
-                 :key="`column_cell-${i}`"
-                 :style="getColStyle(column)"
-                 class="infinity-table__cell">
-              <span :title="row[column.filed]">{{ row[column.filed] }}</span>
+             :style="tbodyMiddleStyle">
+          <div style="overflow: auto; height: 100%;"
+               @scroll="onScroll"
+               ref="tbody">
+            <div :style="{ height: data.length * rowHeight + 'px', position: 'relative' }">
+              <div class="infinity-table__row"
+                   v-for="row in dataView"
+                   :key="`row_${row.id}`"
+                   :style="{ position: 'absolute', transform: `translateY(${row.id * rowHeight}px)`}">
+                <div v-for="(column, i) in columns"
+                     :key="`column_cell-${i}`"
+                     :style="getColStyle(column)"
+                     class="infinity-table__cell">
+                  <span :title="row[column.filed]">{{ row[column.filed] }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -86,6 +111,7 @@ import { Component, Prop, Vue } from 'vue-property-decorator'
 
 @Component
 export default class InfinityTable extends Vue {
+  // data
   @Prop({ default: 0 })
   private height!: number
 
@@ -95,19 +121,36 @@ export default class InfinityTable extends Vue {
   @Prop({ default: () => [] })
   private columnDefs!: any[]
 
-  private rowNodes: Element[] = []
+  @Prop({ default: 38 })
+  private rowHeight!: number
+
   private dataView: any[] = []
-  private scrollAchor: number = 0
-  private headerViewPort = {}
-  private tbodyStyle = {}
+  private scrollAnchor: number = 0
   private timer: any = null
 
-  private showHeadRightFixed: boolean = false
+  private tbodyStyle = {}
+  private theadMiddleWrapStyle = {}
+  private theadMiddleStyle = {
+    position: 'relative',
+    left: '0',
+  }
+  private tbodyLeftStyle = {
+    top: '0',
+  }
+  private tbodyLeftWrapStyle = {
+    position: 'relative',
+    height: 'auto',
+    width: '',
+  }
+  private tbodyMiddleStyle = {
+    position: 'relative',
+    marginLeft: '0',
+  }
 
   // table的动态样式
   get tableStyle() {
     return {
-      height: this.height ? this.height + 'px' : '100vh',
+      height: this.height ? this.height + 'px' : 'auto',
     }
   }
 
@@ -119,8 +162,16 @@ export default class InfinityTable extends Vue {
     return this.columnDefs.filter((x) => x.fixed && x.fixed === 'left')
   }
 
-  get showHeadLeftFixed(): boolean {
+  get colFixedLeftWidth(): number {
+    return this.colFixedLeft.map((x) => x.width).reduce((w1, w2) => w1 + w2, 0)
+  }
+
+  get showLeftFixed(): boolean {
     return Boolean(this.colFixedLeft.length)
+  }
+
+  get showRightFixed(): boolean {
+    return Boolean(this.colFixedRight.length)
   }
 
   get colFixedRight() {
@@ -128,19 +179,16 @@ export default class InfinityTable extends Vue {
   }
 
   get viewEl(): Element {
-    return this.$refs.body as Element
+    return (this.$refs.tbody as Element) || null
   }
 
-  // 显示行数
+  get tbodyLeftEl(): Element {
+    return (this.$refs.tbodyFixedLeft as Element) || null
+  }
+
+  // 获取视图内需要渲染行的数量
   public getShowRowCount(): number {
-    return Math.ceil(this.height / 39)
-  }
-
-  // 行样式
-  public getRowStyle(index: number) {
-    return {
-      // transform: `translateY(${index * 34}px)`
-    }
+    return Math.ceil(this.height / this.rowHeight)
   }
 
   // 单元格样式
@@ -152,6 +200,7 @@ export default class InfinityTable extends Vue {
     if (column.width) {
       style.width = `${column.width + 'px'}`
     } else if (column.minWidth) {
+      style.width = '0px'
       style.minWidth = column.minWidth + 'px'
     } else {
       style.minWidth = 'fit-content'
@@ -177,20 +226,28 @@ export default class InfinityTable extends Vue {
     // observer.observe(<Element>this.$refs.table)
   }
 
+  /**
+   * 表头区域渲染
+   */
   public renderTableHeader() {
-    const theadFixLeft = this.$refs.theadFixLeft as HTMLElement
-    this.headerViewPort = {
-      marginLeft: theadFixLeft ? `${theadFixLeft.scrollWidth}px` : '0px',
+    this.theadMiddleWrapStyle = {
+      marginLeft: this.colFixedLeftWidth ? `${this.colFixedLeftWidth}px` : '0px',
     }
   }
 
+  /**
+   * 表格区域渲染
+   */
   public renderTableBody() {
     const thead = this.$refs.thead as HTMLElement
+    if (this.showLeftFixed) {
+      this.tbodyMiddleStyle.marginLeft = `${this.tbodyLeftEl.clientWidth}px`
+      this.tbodyLeftWrapStyle.height = `${this.data.length * this.rowHeight}px`
+      this.tbodyLeftWrapStyle.width = this.colFixedLeftWidth + 'px'
+    }
     this.tbodyStyle = {
       height: this.height ? this.height - thead.clientHeight + 'px' : '100vh',
-      overflowY: 'auto',
-      overflowX: 'auto',
-      top: thead ? thead.clientHeight : '38px',
+      top: thead ? thead.clientHeight + 'px' : '0',
     }
   }
 
@@ -198,19 +255,21 @@ export default class InfinityTable extends Vue {
    * 滚动事件
    */
   private onScroll() {
+    this.theadMiddleStyle.left = -this.viewEl.scrollLeft + 'px'
+    this.tbodyLeftStyle.top = -this.viewEl.scrollTop + 'px'
     clearInterval(this.timer)
     this.timer = setInterval(() => {
       this.updateRenderRowIndex()
       clearInterval(this.timer)
       this.timer = null
-    }, 20)
+    }, 0)
   }
 
   /**
    * 更新所有需要显示行数的下标数组
    */
   private updateRenderRowIndex() {
-    let index = Math.floor(this.viewEl.scrollTop / 38)
+    let index = Math.floor(this.viewEl.scrollTop / this.rowHeight)
     const showCount = this.getShowRowCount()
     const count = index + showCount
     const indexArr: number[] = []
@@ -218,7 +277,7 @@ export default class InfinityTable extends Vue {
       indexArr.push(index)
     }
     this.dataView = this.data.filter((x, i) => indexArr.includes(x.id))
-    this.scrollAchor = this.viewEl.scrollTop
+    this.scrollAnchor = this.viewEl.scrollTop
   }
 }
 </script>
@@ -247,7 +306,7 @@ $border-color: #ebeef5;
 }
 
 .infinity-table__cell {
-  display: block;
+  display: inline-block;
   height: 100%;
   width: 100%;
   padding: 8px 12px;
@@ -256,10 +315,10 @@ $border-color: #ebeef5;
 }
 
 .infinity-table__row {
-  display: flex;
+  display: block;
   white-space: nowrap;
   width: 100%;
-  min-height: 34px;
+  height: 38px;
 }
 
 .infinity-table__header {
@@ -268,7 +327,6 @@ $border-color: #ebeef5;
   left: 0;
   width: 100%;
   overflow: hidden;
-  white-space: nowrap;
   background-color: #f5f7f7;
   color: rgba(0, 0, 0, 0.54);
 
@@ -296,17 +354,47 @@ $border-color: #ebeef5;
   .table__header--fix-right {
     float: right;
   }
-
-  &.fixed {
-    position: fixed;
-  }
 }
 
 .infinity-table__body {
   position: absolute;
-  top: 38px;
-  left: 0;
   width: 100%;
+
+  .table__body--fix-left,
+  .table__body--viewport,
+  .table__body--fix-right {
+    display: inline;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+
+  .table__body--viewport {
+    display: block;
+    overflow: auto;
+    height: 100%;
+
+    .infinity-table__row {
+      margin-left: -1px;
+    }
+  }
+
+  .table__body--fix-left {
+    float: left;
+    height: 461px;
+    border-right: 1px solid $border-color;
+
+    .infinity-table__row {
+      width: initial;
+    }
+  }
+
+  .table__body--fix-right {
+    float: right;
+  }
+
+  .table__body_containner {
+    position: relative;
+  }
 }
 
 .infinity-table--border {
@@ -315,6 +403,7 @@ $border-color: #ebeef5;
   .infinity-table__cell {
     border-bottom: 1px solid $border-color;
     border-left: 1px solid $border-color;
+
     &:first-child {
       border-left: none;
     }
@@ -322,9 +411,11 @@ $border-color: #ebeef5;
 
   .infinity-table__cell {
     border-bottom: 1px solid $border-color;
+
     & + .infinity-table__cell {
       border-left: 1px solid $border-color;
     }
+
     &:first-child {
       border-left: none;
     }
