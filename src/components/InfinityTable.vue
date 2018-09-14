@@ -11,8 +11,20 @@
              v-show="showLeftFixed">
           <div class="infinity-table__row">
             <div class="infinity-table__cell header-label"
-                 v-for="(column, i) in colFixedLeft"
+                 v-for="(column, i) in leftColumnDefs"
                  :key="`column_header-fixLeft-${i}`"
+                 :style="getColStyle(column)">
+              <span>{{ column.title }}</span>
+            </div>
+          </div>
+        </div>
+        <div ref="theadRight"
+             class="table__header-right"
+             v-show="showRightFixed">
+          <div class="infinity-table__row">
+            <div class="infinity-table__cell header-label"
+                 v-for="(column, i) in rightColumnDefs"
+                 :key="`column_header-fixRight-${i}`"
                  :style="getColStyle(column)">
               <span>{{ column.title }}</span>
             </div>
@@ -29,18 +41,6 @@
                    :style="getColStyle(column)">
                 <span>{{ column.title }}</span>
               </div>
-            </div>
-          </div>
-        </div>
-        <div ref="theadRight"
-             class="table__header-right"
-             v-show="showRightFixed">
-          <div class="infinity-table__row">
-            <div class="infinity-table__cell header-label"
-                 v-for="(column, i) in colFixedRight"
-                 :key="`column_header-fixRight-${i}`"
-                 :style="getColStyle(column)">
-              <span>{{ column.title }}</span>
             </div>
           </div>
         </div>
@@ -61,7 +61,28 @@
                    v-for="row in rowData"
                    :key="`tbody_left-row${row.id}`"
                    :style="renderRowPosition(row.id)">
-                <div v-for="(column, i) in colFixedLeft"
+                <div v-for="(column, i) in leftColumnDefs"
+                     :key="`column_cell-${i}`"
+                     :style="getColStyle(column)"
+                     class="infinity-table__cell">
+                  <span :title="row[column.filed]">{{ row[column.filed] }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div ref="tbodyRight"
+             class="table__body-right"
+             :style="{ height: height - $refs.thead.clientHeight + 'px' }"
+             v-if="showRightFixed">
+          <div class="table__body-containner"
+               :style="tbodyRightWrapStyle">
+            <div :style="tbodyRightStyle">
+              <div class="infinity-table__row"
+                   v-for="row in rowData"
+                   :key="`tbody_right-row${row.id}`"
+                   :style="renderRowPosition(row.id)">
+                <div v-for="(column, i) in rightColumnDefs"
                      :key="`column_cell-${i}`"
                      :style="getColStyle(column)"
                      class="infinity-table__cell">
@@ -92,7 +113,6 @@
             </div>
           </div>
         </div>
-        <div class="table__body-right"></div>
       </div>
       <!-- 表格部分 -->
 
@@ -114,6 +134,60 @@ import { Component, Prop, Vue } from 'vue-property-decorator'
 
 @Component
 export default class InfinityTable extends Vue {
+
+  // table的动态样式
+  get tableStyle() {
+    return {
+      height: this.height ? this.height + 'px' : 'auto',
+    }
+  }
+
+  // 列定义内容
+  get columns() {
+    return this.columnDefs.filter((x) => !x.fixed)
+  }
+
+  // 是否显示左侧固定布局
+  get showLeftFixed(): boolean {
+    return Boolean(this.leftColumnDefs.length)
+  }
+
+  // 左侧固定布局的列定义内容
+  get leftColumnDefs() {
+    return this.columnDefs.filter((x) => x.fixed && x.fixed === 'left')
+  }
+
+  // 左侧固定布局的总宽度
+  get colFixedLeftWidth(): number {
+    return this.leftColumnDefs.map((x) => x.width).reduce((w1, w2) => w1 + w2, 0)
+  }
+
+  // 是否显示右侧固定布局
+  get showRightFixed(): boolean {
+    return Boolean(this.rightColumnDefs.length)
+  }
+
+  // 右侧固定布局的列定义内容
+  get rightColumnDefs() {
+    return this.columnDefs.filter((x) => x.fixed && x.fixed === 'right')
+  }
+
+  // 右侧固定布局的总宽度
+  get colFixedRightWidth(): number {
+    return this.rightColumnDefs.map((x) => x.width).reduce((w1, w2) => w1 + w2, 0)
+  }
+
+  get viewHeight(): number {
+    return this.data.length * this.rowHeight
+  }
+
+  // $refs declare
+  public $refs!: {
+    thead: Element
+    tbody: Element
+    tbodyLeft: Element
+    tbodyRight: Element,
+  }
   // data
   @Prop({ default: 0 })
   private height!: number
@@ -135,6 +209,10 @@ export default class InfinityTable extends Vue {
     height: 'auto',
     top: '0',
   }
+  private tbodyMiddleViewStyle = {
+    position: 'relative',
+    marginRight: '0',
+  }
   private theadMiddleWrapStyle = {}
   private theadMiddleStyle = {
     position: 'relative',
@@ -148,52 +226,13 @@ export default class InfinityTable extends Vue {
     height: 'auto',
     width: '',
   }
-  private tbodyMiddleViewStyle = {
+  private tbodyRightWrapStyle = {
+    top: '0',
+  }
+  private tbodyRightStyle = {
     position: 'relative',
-    marginLeft: '0',
-  }
-
-  // table的动态样式
-  get tableStyle() {
-    return {
-      height: this.height ? this.height + 'px' : 'auto',
-    }
-  }
-
-  get columns() {
-    return this.columnDefs.filter((x) => !x.fixed)
-  }
-
-  get colFixedLeft() {
-    return this.columnDefs.filter((x) => x.fixed && x.fixed === 'left')
-  }
-
-  get colFixedLeftWidth(): number {
-    return this.colFixedLeft.map((x) => x.width).reduce((w1, w2) => w1 + w2, 0)
-  }
-
-  get showLeftFixed(): boolean {
-    return Boolean(this.colFixedLeft.length)
-  }
-
-  get showRightFixed(): boolean {
-    return Boolean(this.colFixedRight.length)
-  }
-
-  get colFixedRight() {
-    return this.columnDefs.filter((x) => x.fixed && x.fixed === 'right')
-  }
-
-  get viewEl(): Element {
-    return (this.$refs.tbody as Element) || null
-  }
-
-  get tbodyLeftEl(): Element {
-    return (this.$refs.tbodyLeft as Element) || null
-  }
-
-  get viewHeight(): number {
-    return this.data.length * this.rowHeight
+    height: 'auto',
+    width: '',
   }
 
   // 获取视图内需要渲染行的数量
@@ -241,7 +280,9 @@ export default class InfinityTable extends Vue {
    */
   public renderTableHeader() {
     this.theadMiddleWrapStyle = {
-      marginLeft: this.colFixedLeftWidth ? `${this.colFixedLeftWidth}px` : '0px',
+      marginRight: this.colFixedRightWidth
+        ? `${this.colFixedRightWidth}px`
+        : '0px',
     }
   }
 
@@ -251,9 +292,15 @@ export default class InfinityTable extends Vue {
   public renderTableBody() {
     const thead = this.$refs.thead as HTMLElement
     if (this.showLeftFixed) {
-      this.tbodyMiddleViewStyle.marginLeft = `${this.tbodyLeftEl.clientWidth}px`
       this.tbodyLeftStyle.width = this.colFixedLeftWidth + 'px'
       this.tbodyLeftStyle.height = `${this.viewHeight}px`
+    }
+    if (this.showRightFixed) {
+      this.tbodyMiddleViewStyle.marginRight = `-${
+        this.$refs.tbodyRight.clientWidth
+      }px`
+      this.tbodyRightStyle.width = this.colFixedRightWidth + 'px'
+      this.tbodyRightStyle.height = `${this.viewHeight}px`
     }
     this.tbodyStyle.height = this.height
       ? `${this.height - thead.clientHeight}px`
@@ -276,21 +323,22 @@ export default class InfinityTable extends Vue {
    * 滚动事件
    */
   private onScroll() {
-    this.theadMiddleStyle.left = -this.viewEl.scrollLeft + 'px'
-    this.tbodyLeftWrapStyle.top = -this.viewEl.scrollTop + 'px'
-    clearInterval(this.timer)
-    this.timer = setInterval(() => {
-      this.updateRenderRowIndex()
-      clearInterval(this.timer)
-      this.timer = null
-    }, 0)
+    this.theadMiddleStyle.left = -this.$refs.tbody.scrollLeft + 'px'
+    this.tbodyLeftWrapStyle.top = -this.$refs.tbody.scrollTop + 'px'
+    this.tbodyRightWrapStyle.top = -this.$refs.tbody.scrollTop + 'px'
+    // clearInterval(this.timer)
+    // this.timer = setInterval(() => {
+    this.updateRenderRowIndex()
+    // clearInterval(this.timer)
+    //   this.timer = null
+    // }, 0)
   }
 
   /**
    * 更新所有需要显示行数的下标数组
    */
   private updateRenderRowIndex() {
-    let index = Math.floor(this.viewEl.scrollTop / this.rowHeight)
+    let index = Math.floor(this.$refs.tbody.scrollTop / this.rowHeight)
     const showCount = this.getShowRowCount()
     const count = index + showCount
     const indexArr: number[] = []
@@ -298,7 +346,7 @@ export default class InfinityTable extends Vue {
       indexArr.push(index)
     }
     this.rowData = this.data.filter((x, i) => indexArr.includes(x.id))
-    this.scrollAnchor = this.viewEl.scrollTop
+    this.scrollAnchor = this.$refs.tbody.scrollTop
   }
 }
 </script>
@@ -362,18 +410,16 @@ $border-color: #ebeef5;
 
   .table__header-middle {
     display: block;
-
-    .infinity-table__row {
-      margin-left: -1px;
-    }
   }
 
   .table__header-left {
     float: left;
+    border-right: 1px solid $border-color;
   }
 
   .table__header-right {
     float: right;
+    border-left: 1px solid $border-color;
   }
 }
 
@@ -393,10 +439,6 @@ $border-color: #ebeef5;
     display: block;
     overflow: auto;
     height: 100%;
-
-    .infinity-table__row {
-      margin-left: -1px;
-    }
   }
 
   .table__body-left {
@@ -410,6 +452,11 @@ $border-color: #ebeef5;
 
   .table__body-right {
     float: right;
+    border-left: 1px solid $border-color;
+
+    .infinity-table__row {
+      width: initial;
+    }
   }
 
   .infinity-table__row {
@@ -443,10 +490,6 @@ $border-color: #ebeef5;
     &:first-child {
       border-left: none;
     }
-  }
-
-  .table__header-left {
-    border-right: 1px solid $border-color;
   }
 }
 </style>

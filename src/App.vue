@@ -3,7 +3,7 @@
     <infinity-table style="margin: 0 100px;"
                     :data="data"
                     :column-defs="columnDefs"
-                    :height="500">
+                    :height="750">
     </infinity-table>
   </div>
 </template>
@@ -22,7 +22,7 @@ export default class App extends Vue {
 
   public mounted() {
     this.data = []
-    for (let i = 0; i < 5000; i++) {
+    for (let i = 0; i < 500; i++) {
       this.data.push({
         id: i,
         name: `name_${i}`,
@@ -39,12 +39,19 @@ export default class App extends Vue {
     const firstRow = this.data.find((row) => row.id === 1)
     if (firstRow) {
       Object.keys(firstRow).forEach((key, i) => {
-        colunms.push({
+        const column = {
           filed: key,
           title: key,
           width: 100 + i * 20,
-          fixed: i <= 1 ? 'left' : false,
-        })
+          fixed: '',
+        }
+        if (i <= 0) {
+          column.fixed = 'left'
+        }
+        if (i >= 5) {
+          column.fixed = 'right'
+        }
+        colunms.push(column)
       })
     }
     return colunms
