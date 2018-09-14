@@ -54,13 +54,16 @@
              class="table__body-left"
              :style="{ height: height - $refs.thead.clientHeight + 'px' }"
              v-if="showLeftFixed">
-          <div class="table__body-containner"
-               :style="tbodyLeftWrapStyle">
+          <div ref="tbodyLeftScroll"
+               class="table__body-containner">
             <div :style="tbodyLeftStyle">
-              <div class="infinity-table__row"
-                   v-for="row in rowData"
+              <div v-for="row in rowData"
+                   class="infinity-table__row"
+                   :class="{ 'hover': hoverIndex === row.id }"
                    :key="`tbody_left-row${row.id}`"
-                   :style="renderRowPosition(row.id)">
+                   :style="renderRowPosition(row.id)"
+                   @mouseenter="onMouseEnter(row.id)"
+                   @mouseleave="onMouseLeave">
                 <div v-for="(column, i) in leftColumnDefs"
                      :key="`column_cell-${i}`"
                      :style="getColStyle(column)"
@@ -76,12 +79,15 @@
              :style="{ height: height - $refs.thead.clientHeight + 'px' }"
              v-if="showRightFixed">
           <div class="table__body-containner"
-               :style="tbodyRightWrapStyle">
+               ref="tbodyRightScroll">
             <div :style="tbodyRightStyle">
-              <div class="infinity-table__row"
-                   v-for="row in rowData"
+              <div v-for="row in rowData"
+                   class="infinity-table__row"
+                   :class="{ 'hover': hoverIndex === row.id }"
                    :key="`tbody_right-row${row.id}`"
-                   :style="renderRowPosition(row.id)">
+                   :style="renderRowPosition(row.id)"
+                   @mouseenter="onMouseEnter(row.id)"
+                   @mouseleave="onMouseLeave">
                 <div v-for="(column, i) in rightColumnDefs"
                      :key="`column_cell-${i}`"
                      :style="getColStyle(column)"
@@ -95,14 +101,16 @@
         <div class="table__body-middle"
              :style="tbodyMiddleViewStyle">
           <div ref="tbody"
-               style="overflow: auto; height: 100%;"
-               @scroll="onScroll">
+               style="overflow: auto; height: 100%; scroll-behavior: smooth;">
             <div class="table__body-containner"
                  :style="{ height: viewHeight + 'px' }">
-              <div class="infinity-table__row"
-                   v-for="row in rowData"
+              <div v-for="row in rowData"
+                   class="infinity-table__row"
+                   :class="{ 'hover': hoverIndex === row.id }"
                    :key="`row_${row.id}`"
-                   :style="renderRowPosition(row.id)">
+                   :style="renderRowPosition(row.id)"
+                   @mouseenter="onMouseEnter(row.id)"
+                   @mouseleave="onMouseLeave">
                 <div v-for="(column, i) in columns"
                      :key="`column_cell-${i}`"
                      :style="getColStyle(column)"
@@ -134,7 +142,6 @@ import { Component, Prop, Vue } from 'vue-property-decorator'
 
 @Component
 export default class InfinityTable extends Vue {
-
   // table的动态样式
   get tableStyle() {
     return {
@@ -177,6 +184,7 @@ export default class InfinityTable extends Vue {
     return this.rightColumnDefs.map((x) => x.width).reduce((w1, w2) => w1 + w2, 0)
   }
 
+  // 视图高度
   get viewHeight(): number {
     return this.data.length * this.rowHeight
   }
@@ -186,7 +194,9 @@ export default class InfinityTable extends Vue {
     thead: Element
     tbody: Element
     tbodyLeft: Element
-    tbodyRight: Element,
+    tbodyRight: Element
+    tbodyLeftScroll: HTMLElement
+    tbodyRightScroll: HTMLElement,
   }
   // data
   @Prop({ default: 0 })
@@ -200,6 +210,9 @@ export default class InfinityTable extends Vue {
 
   @Prop({ default: 38 })
   private rowHeight!: number
+
+  @Prop({ default: false })
+  private hover!: boolean
 
   private rowData: any[] = []
   private scrollAnchor: number = 0
@@ -218,22 +231,18 @@ export default class InfinityTable extends Vue {
     position: 'relative',
     left: '0',
   }
-  private tbodyLeftWrapStyle = {
-    top: '0',
-  }
   private tbodyLeftStyle = {
     position: 'relative',
     height: 'auto',
     width: '',
-  }
-  private tbodyRightWrapStyle = {
-    top: '0',
   }
   private tbodyRightStyle = {
     position: 'relative',
     height: 'auto',
     width: '',
   }
+
+  private hoverIndex: any = null
 
   // 获取视图内需要渲染行的数量
   public getShowRowCount(): number {
@@ -270,9 +279,14 @@ export default class InfinityTable extends Vue {
     this.updateRenderRowIndex()
     this.renderTableHeader()
     this.renderTableBody()
+    this.setScrollListener()
 
     // let observer = new window.ResizeObserver(this.onResize)
     // observer.observe(<Element>this.$refs.table)
+  }
+
+  public beforeDestroy() {
+    this.$refs.tbody.removeEventListener('scroll', this.onScroll)
   }
 
   /**
@@ -296,9 +310,9 @@ export default class InfinityTable extends Vue {
       this.tbodyLeftStyle.height = `${this.viewHeight}px`
     }
     if (this.showRightFixed) {
-      this.tbodyMiddleViewStyle.marginRight = `-${
-        this.$refs.tbodyRight.clientWidth
-      }px`
+      this.tbodyMiddleViewStyle.marginRight = this.$refs.tbodyRight
+        ? `-${this.$refs.tbodyRight.clientWidth}px`
+        : this.tbodyMiddleViewStyle.marginRight
       this.tbodyRightStyle.width = this.colFixedRightWidth + 'px'
       this.tbodyRightStyle.height = `${this.viewHeight}px`
     }
@@ -308,6 +322,20 @@ export default class InfinityTable extends Vue {
     this.tbodyStyle.top = thead
       ? thead.clientHeight + 'px'
       : this.tbodyStyle.top
+  }
+
+  public onMouseEnter(index: number) {
+    if (this.hover === false) {
+      return
+    }
+    this.hoverIndex = index
+  }
+
+  public onMouseLeave(event: Event) {
+    if (this.hover === false) {
+      return
+    }
+    this.hoverIndex = null
   }
 
   /**
@@ -320,18 +348,26 @@ export default class InfinityTable extends Vue {
   }
 
   /**
+   * 设置滚动监听事件
+   */
+  private setScrollListener(): void {
+    this.$refs.tbody.addEventListener('scroll', this.onScroll)
+  }
+
+  /**
    * 滚动事件
    */
-  private onScroll() {
-    this.theadMiddleStyle.left = -this.$refs.tbody.scrollLeft + 'px'
-    this.tbodyLeftWrapStyle.top = -this.$refs.tbody.scrollTop + 'px'
-    this.tbodyRightWrapStyle.top = -this.$refs.tbody.scrollTop + 'px'
-    // clearInterval(this.timer)
-    // this.timer = setInterval(() => {
+  private onScroll(ev: Event) {
+    this.hoverIndex = null
+    const el = ev.target as Element
+    this.theadMiddleStyle.left = -el.scrollLeft + 'px'
+    if (this.$refs.tbodyLeftScroll) {
+      this.$refs.tbodyLeftScroll.style.top = -el.scrollTop + 'px'
+    }
+    if (this.$refs.tbodyRightScroll) {
+      this.$refs.tbodyRightScroll.style.top = -el.scrollTop + 'px'
+    }
     this.updateRenderRowIndex()
-    // clearInterval(this.timer)
-    //   this.timer = null
-    // }, 0)
   }
 
   /**
@@ -353,6 +389,7 @@ export default class InfinityTable extends Vue {
 
 <style lang="scss">
 $border-color: #ebeef5;
+$hover-color: #f5f7fa;
 
 @mixin ellipsis {
   text-overflow: ellipsis;
@@ -379,6 +416,7 @@ $border-color: #ebeef5;
   height: 100%;
   width: 100%;
   padding: 8px 12px;
+  background: inherit;
 
   @include ellipsis;
 }
@@ -388,6 +426,11 @@ $border-color: #ebeef5;
   white-space: nowrap;
   width: 100%;
   height: 38px;
+
+  &.hover .infinity-table__cell {
+    transition: background-color 0.25s;
+    background-color: $hover-color;
+  }
 }
 
 .infinity-table__header {
@@ -465,6 +508,7 @@ $border-color: #ebeef5;
 
   .table__body-containner {
     position: relative;
+    scroll-behavior: smooth;
   }
 }
 

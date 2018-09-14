@@ -3,7 +3,8 @@
     <infinity-table style="margin: 0 100px;"
                     :data="data"
                     :column-defs="columnDefs"
-                    :height="750">
+                    :height="750"
+                    hover>
     </infinity-table>
   </div>
 </template>
