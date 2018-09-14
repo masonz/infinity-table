@@ -6,8 +6,8 @@
       <!-- 表头部分 -->
       <div ref="thead"
            class="infinity-table__header">
-        <div ref="theadFixLeft"
-             class="table__header--fix-left"
+        <div ref="theadLeft"
+             class="table__header-left"
              v-show="showLeftFixed">
           <div class="infinity-table__row">
             <div class="infinity-table__cell header-label"
@@ -18,7 +18,8 @@
             </div>
           </div>
         </div>
-        <div class="table__header--viewport"
+        <div ref="theadMiddle"
+             class="table__header-middle"
              :style="theadMiddleWrapStyle">
           <div :style="theadMiddleStyle">
             <div class="infinity-table__row">
@@ -31,8 +32,8 @@
             </div>
           </div>
         </div>
-        <div ref="theadFixRight"
-             class="table__header--fix-right"
+        <div ref="theadRight"
+             class="table__header-right"
              v-show="showRightFixed">
           <div class="infinity-table__row">
             <div class="infinity-table__cell header-label"
@@ -49,16 +50,17 @@
       <!-- 表格部分 -->
       <div class="infinity-table__body"
            :style="tbodyStyle">
-        <div class="table__body--fix-left"
-             ref="tbodyFixedLeft"
+        <div ref="tbodyLeft"
+             class="table__body-left"
+             :style="{ height: height - $refs.thead.clientHeight + 'px' }"
              v-if="showLeftFixed">
-          <div class="table__body_containner"
-               :style="tbodyLeftStyle">
-            <div :style="tbodyLeftWrapStyle">
+          <div class="table__body-containner"
+               :style="tbodyLeftWrapStyle">
+            <div :style="tbodyLeftStyle">
               <div class="infinity-table__row"
-                   v-for="row in dataView"
-                   :key="`row_${row.id}`"
-                   :style="{ position: 'absolute', transform: `translateY(${row.id * rowHeight}px)`}">
+                   v-for="row in rowData"
+                   :key="`tbody_left-row${row.id}`"
+                   :style="renderRowPosition(row.id)">
                 <div v-for="(column, i) in colFixedLeft"
                      :key="`column_cell-${i}`"
                      :style="getColStyle(column)"
@@ -69,16 +71,17 @@
             </div>
           </div>
         </div>
-        <div class="table__body--viewport"
-             :style="tbodyMiddleStyle">
-          <div style="overflow: auto; height: 100%;"
-               @scroll="onScroll"
-               ref="tbody">
-            <div :style="{ height: data.length * rowHeight + 'px', position: 'relative' }">
+        <div class="table__body-middle"
+             :style="tbodyMiddleViewStyle">
+          <div ref="tbody"
+               style="overflow: auto; height: 100%;"
+               @scroll="onScroll">
+            <div class="table__body-containner"
+                 :style="{ height: viewHeight + 'px' }">
               <div class="infinity-table__row"
-                   v-for="row in dataView"
+                   v-for="row in rowData"
                    :key="`row_${row.id}`"
-                   :style="{ position: 'absolute', transform: `translateY(${row.id * rowHeight}px)`}">
+                   :style="renderRowPosition(row.id)">
                 <div v-for="(column, i) in columns"
                      :key="`column_cell-${i}`"
                      :style="getColStyle(column)"
@@ -89,15 +92,15 @@
             </div>
           </div>
         </div>
-        <div class="table__body--fix-right"></div>
+        <div class="table__body-right"></div>
       </div>
       <!-- 表格部分 -->
 
       <!-- 表格底部 -->
       <div class="infinity-table__foot">
-        <div class="table__foot--fix-left"></div>
-        <div class="table__foot--viewport"></div>
-        <div class="table__body--fix-right"></div>
+        <div class="table__foot-left"></div>
+        <div class="table__foot-middle"></div>
+        <div class="table__foot-right"></div>
       </div>
       <!-- 表格底部 -->
 
@@ -124,25 +127,28 @@ export default class InfinityTable extends Vue {
   @Prop({ default: 38 })
   private rowHeight!: number
 
-  private dataView: any[] = []
+  private rowData: any[] = []
   private scrollAnchor: number = 0
   private timer: any = null
 
-  private tbodyStyle = {}
+  private tbodyStyle = {
+    height: 'auto',
+    top: '0',
+  }
   private theadMiddleWrapStyle = {}
   private theadMiddleStyle = {
     position: 'relative',
     left: '0',
   }
-  private tbodyLeftStyle = {
+  private tbodyLeftWrapStyle = {
     top: '0',
   }
-  private tbodyLeftWrapStyle = {
+  private tbodyLeftStyle = {
     position: 'relative',
     height: 'auto',
     width: '',
   }
-  private tbodyMiddleStyle = {
+  private tbodyMiddleViewStyle = {
     position: 'relative',
     marginLeft: '0',
   }
@@ -183,7 +189,11 @@ export default class InfinityTable extends Vue {
   }
 
   get tbodyLeftEl(): Element {
-    return (this.$refs.tbodyFixedLeft as Element) || null
+    return (this.$refs.tbodyLeft as Element) || null
+  }
+
+  get viewHeight(): number {
+    return this.data.length * this.rowHeight
   }
 
   // 获取视图内需要渲染行的数量
@@ -215,7 +225,7 @@ export default class InfinityTable extends Vue {
     for (let index = 0; index < count; index++) {
       const row = this.data.findIndex((x) => x === index)
       if (row) {
-        this.dataView.push(row)
+        this.rowData.push(row)
       }
     }
     this.updateRenderRowIndex()
@@ -241,13 +251,24 @@ export default class InfinityTable extends Vue {
   public renderTableBody() {
     const thead = this.$refs.thead as HTMLElement
     if (this.showLeftFixed) {
-      this.tbodyMiddleStyle.marginLeft = `${this.tbodyLeftEl.clientWidth}px`
-      this.tbodyLeftWrapStyle.height = `${this.data.length * this.rowHeight}px`
-      this.tbodyLeftWrapStyle.width = this.colFixedLeftWidth + 'px'
+      this.tbodyMiddleViewStyle.marginLeft = `${this.tbodyLeftEl.clientWidth}px`
+      this.tbodyLeftStyle.width = this.colFixedLeftWidth + 'px'
+      this.tbodyLeftStyle.height = `${this.viewHeight}px`
     }
-    this.tbodyStyle = {
-      height: this.height ? this.height - thead.clientHeight + 'px' : '100vh',
-      top: thead ? thead.clientHeight + 'px' : '0',
+    this.tbodyStyle.height = this.height
+      ? `${this.height - thead.clientHeight}px`
+      : this.tbodyStyle.height
+    this.tbodyStyle.top = thead
+      ? thead.clientHeight + 'px'
+      : this.tbodyStyle.top
+  }
+
+  /**
+   * 渲染行的位置
+   */
+  private renderRowPosition(id: number) {
+    return {
+      transform: `translateY(${id * this.rowHeight}px)`,
     }
   }
 
@@ -256,7 +277,7 @@ export default class InfinityTable extends Vue {
    */
   private onScroll() {
     this.theadMiddleStyle.left = -this.viewEl.scrollLeft + 'px'
-    this.tbodyLeftStyle.top = -this.viewEl.scrollTop + 'px'
+    this.tbodyLeftWrapStyle.top = -this.viewEl.scrollTop + 'px'
     clearInterval(this.timer)
     this.timer = setInterval(() => {
       this.updateRenderRowIndex()
@@ -276,7 +297,7 @@ export default class InfinityTable extends Vue {
     for (index; index < count; index++) {
       indexArr.push(index)
     }
-    this.dataView = this.data.filter((x, i) => indexArr.includes(x.id))
+    this.rowData = this.data.filter((x, i) => indexArr.includes(x.id))
     this.scrollAnchor = this.viewEl.scrollTop
   }
 }
@@ -330,16 +351,16 @@ $border-color: #ebeef5;
   background-color: #f5f7f7;
   color: rgba(0, 0, 0, 0.54);
 
-  .table__header--fix-left,
-  .table__header--viewport,
-  .table__header--fix-right {
+  .table__header-left,
+  .table__header-middle,
+  .table__header-right {
     display: inline-block;
     box-sizing: border-box;
     height: 100%;
     overflow: hidden;
   }
 
-  .table__header--viewport {
+  .table__header-middle {
     display: block;
 
     .infinity-table__row {
@@ -347,11 +368,11 @@ $border-color: #ebeef5;
     }
   }
 
-  .table__header--fix-left {
+  .table__header-left {
     float: left;
   }
 
-  .table__header--fix-right {
+  .table__header-right {
     float: right;
   }
 }
@@ -360,15 +381,15 @@ $border-color: #ebeef5;
   position: absolute;
   width: 100%;
 
-  .table__body--fix-left,
-  .table__body--viewport,
-  .table__body--fix-right {
+  .table__body-left,
+  .table__body-middle,
+  .table__body-right {
     display: inline;
     box-sizing: border-box;
     overflow: hidden;
   }
 
-  .table__body--viewport {
+  .table__body-middle {
     display: block;
     overflow: auto;
     height: 100%;
@@ -378,9 +399,8 @@ $border-color: #ebeef5;
     }
   }
 
-  .table__body--fix-left {
+  .table__body-left {
     float: left;
-    height: 461px;
     border-right: 1px solid $border-color;
 
     .infinity-table__row {
@@ -388,11 +408,15 @@ $border-color: #ebeef5;
     }
   }
 
-  .table__body--fix-right {
+  .table__body-right {
     float: right;
   }
 
-  .table__body_containner {
+  .infinity-table__row {
+    position: absolute;
+  }
+
+  .table__body-containner {
     position: relative;
   }
 }
@@ -421,7 +445,7 @@ $border-color: #ebeef5;
     }
   }
 
-  .table__header--fix-left {
+  .table__header-left {
     border-right: 1px solid $border-color;
   }
 }
