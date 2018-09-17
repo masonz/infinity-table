@@ -8,7 +8,7 @@
       <template slot-scope="s"
                 slot="id">
         <span @click="onClick(s.row)"
-              style="color: blue;">
+              style="color: #409eff;">
           {{ s.row.id }}
         </span>
       </template>

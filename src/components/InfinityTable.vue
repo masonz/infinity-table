@@ -163,6 +163,11 @@ import { Component, Prop, Vue } from 'vue-property-decorator'
 
 @Component
 export default class InfinityTable extends Vue {
+
+  //#endregion Data
+
+  //#region Computed
+
   // table的动态样式
   get tableStyle() {
     return {
@@ -187,7 +192,9 @@ export default class InfinityTable extends Vue {
 
   // 左侧固定布局的总宽度
   get colFixedLeftWidth(): number {
-    return this.leftColumnDefs.map((x) => x.width).reduce((w1, w2) => w1 + w2, 0)
+    return this.leftColumnDefs
+      .map((x) => x.width || this.defaultWidth)
+      .reduce((w1, w2) => w1 + w2, 0)
   }
 
   // 是否显示右侧固定布局
@@ -202,7 +209,9 @@ export default class InfinityTable extends Vue {
 
   // 右侧固定布局的总宽度
   get colFixedRightWidth(): number {
-    return this.rightColumnDefs.map((x) => x.width).reduce((w1, w2) => w1 + w2, 0)
+    return this.rightColumnDefs
+      .map((x) => x.width || this.defaultWidth)
+      .reduce((w1, w2) => w1 + w2, 0)
   }
 
   // 视图高度
@@ -212,26 +221,36 @@ export default class InfinityTable extends Vue {
 
   // $refs declare
   public $refs!: {
-    thead: Element
-    tbody: Element
-    tbodyLeft: Element
-    tbodyRight: Element
+    thead: HTMLElement
+    tbody: HTMLElement
+    tbodyLeft: HTMLElement
+    tbodyRight: HTMLElement
     tbodyLeftScroll: HTMLElement
     tbodyRightScroll: HTMLElement,
   }
-  // data
+  //#region Data
+
+  // 表格高度
   @Prop({ default: 0 })
   private height!: number
 
+  // 表格数据
   @Prop({ default: () => [] })
   private data!: any[]
 
+  // 列定义集合
   @Prop({ default: () => [] })
   private columnDefs!: any[]
 
+  // 行高
   @Prop({ default: 38 })
   private rowHeight!: number
 
+  // 默认列宽
+  @Prop({ default: 100 })
+  private defaultWidth!: number
+
+  // 是否需要鼠标悬浮高亮
   @Prop({ default: false })
   private hover!: boolean
 
@@ -265,6 +284,10 @@ export default class InfinityTable extends Vue {
 
   private hoverIndex: any = null
 
+  //#endregion Computed
+
+  //#region Methods
+
   // 获取视图内需要渲染行的数量
   public getShowRowCount(): number {
     return Math.ceil(this.height / this.rowHeight)
@@ -273,16 +296,17 @@ export default class InfinityTable extends Vue {
   // 单元格样式
   public getColStyle(column: any) {
     const style = {
-      width: '',
-      minWidth: '',
+      flex: `1 0 ${this.defaultWidth}px`,
+      width: `${this.defaultWidth}px`,
+      minWidth: '0',
     }
     if (column.width) {
       style.width = `${column.width + 'px'}`
+      style.flex = `1 0 ${column.width + 'px'}`
     } else if (column.minWidth) {
-      style.width = '0px'
+      style.width = '0'
       style.minWidth = column.minWidth + 'px'
-    } else {
-      style.minWidth = 'fit-content'
+      style.flex = `1 0 ${column.minWidth + 'px'}`
     }
     return style
   }
@@ -409,12 +433,15 @@ export default class InfinityTable extends Vue {
     this.rowData = this.data.filter((x, i) => indexArr.includes(x.id))
     this.scrollAnchor = this.$refs.tbody.scrollTop
   }
+
+  //#endregion Methods
 }
 </script>
 
 <style lang="scss">
 $border-color: #ebeef5;
 $hover-color: #f5f7fa;
+$black-color: #24292e;
 
 @mixin ellipsis {
   text-overflow: ellipsis;
@@ -447,7 +474,8 @@ $hover-color: #f5f7fa;
 }
 
 .infinity-table__row {
-  display: block;
+  // display: block;
+  display: flex;
   white-space: nowrap;
   width: 100%;
   height: 38px;
@@ -488,6 +516,11 @@ $hover-color: #f5f7fa;
   .table__header-right {
     float: right;
     border-left: 1px solid $border-color;
+  }
+
+  .infinity-table__cell {
+    color: $black-color;
+    font-weight: bold;
   }
 }
 
