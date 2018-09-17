@@ -68,7 +68,14 @@
                      :key="`column_cell-${i}`"
                      :style="getColStyle(column)"
                      class="infinity-table__cell">
-                  <span :title="row[column.filed]">{{ row[column.filed] }}</span>
+                  <slot v-if="column.slot"
+                        :name="column.filed"
+                        :row="row">
+                  </slot>
+                  <span v-else
+                        :title="row[column.filed]">
+                    {{ row[column.filed] }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -92,7 +99,14 @@
                      :key="`column_cell-${i}`"
                      :style="getColStyle(column)"
                      class="infinity-table__cell">
-                  <span :title="row[column.filed]">{{ row[column.filed] }}</span>
+                  <slot v-if="column.slot"
+                        :name="column.filed"
+                        :row="row">
+                  </slot>
+                  <span v-else
+                        :title="row[column.filed]">
+                    {{ row[column.filed] }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -115,7 +129,14 @@
                      :key="`column_cell-${i}`"
                      :style="getColStyle(column)"
                      class="infinity-table__cell">
-                  <span :title="row[column.filed]">{{ row[column.filed] }}</span>
+                  <slot v-if="column.slot"
+                        :name="column.filed"
+                        :row="row">
+                  </slot>
+                  <span v-else
+                        :title="row[column.filed]">
+                    {{ row[column.filed] }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -336,6 +357,10 @@ export default class InfinityTable extends Vue {
       return
     }
     this.hoverIndex = null
+  }
+
+  public compile(template: string) {
+    return Vue.compile(template)
   }
 
   /**

@@ -5,6 +5,13 @@
                     :column-defs="columnDefs"
                     :height="750"
                     hover>
+      <template slot-scope="s"
+                slot="id">
+        <span @click="onClick(s.row)"
+              style="color: blue;">
+          {{ s.row.id }}
+        </span>
+      </template>
     </infinity-table>
   </div>
 </template>
@@ -45,6 +52,7 @@ export default class App extends Vue {
           title: key,
           width: 100 + i * 20,
           fixed: '',
+          slot: i === 0,
         }
         if (i <= 0) {
           column.fixed = 'left'
@@ -56,6 +64,10 @@ export default class App extends Vue {
       })
     }
     return colunms
+  }
+
+  public onClick(row: any) {
+    alert(`自定义单元格: ${row.id}`)
   }
 }
 </script>
