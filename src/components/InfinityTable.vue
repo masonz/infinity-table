@@ -57,12 +57,12 @@
           <div ref="tbodyLeftScroll"
                class="table__body-containner">
             <div :style="tbodyLeftStyle">
-              <div v-for="row in rowData"
+              <div v-for="(row, i) in rowData"
                    class="infinity-table__row"
-                   :class="{ 'hover': hoverIndex === row.id }"
-                   :key="`tbody_left-row${row.id}`"
-                   :style="renderRowPosition(row.id)"
-                   @mouseenter="onMouseEnter(row.id)"
+                   :class="{ 'hover': hoverIndex === row.$index }"
+                   :key="`tbody_left-row${i}`"
+                   :style="renderRowPosition(row.$index)"
+                   @mouseenter="onMouseEnter(row.$index)"
                    @mouseleave="onMouseLeave">
                 <div v-for="(column, i) in leftColumnDefs"
                      :key="`column_cell-${i}`"
@@ -88,12 +88,12 @@
           <div class="table__body-containner"
                ref="tbodyRightScroll">
             <div :style="tbodyRightStyle">
-              <div v-for="row in rowData"
+              <div v-for="(row, i) in rowData"
                    class="infinity-table__row"
-                   :class="{ 'hover': hoverIndex === row.id }"
-                   :key="`tbody_right-row${row.id}`"
-                   :style="renderRowPosition(row.id)"
-                   @mouseenter="onMouseEnter(row.id)"
+                   :class="{ 'hover': hoverIndex === row.$index }"
+                   :key="`tbody_right-row${i}`"
+                   :style="renderRowPosition(row.$index)"
+                   @mouseenter="onMouseEnter(row.$index)"
                    @mouseleave="onMouseLeave">
                 <div v-for="(column, i) in rightColumnDefs"
                      :key="`column_cell-${i}`"
@@ -118,12 +118,12 @@
                style="overflow: auto; height: 100%; scroll-behavior: smooth;">
             <div class="table__body-containner"
                  :style="{ height: viewHeight + 'px' }">
-              <div v-for="row in rowData"
+              <div v-for="(row, i) in rowData"
                    class="infinity-table__row"
-                   :class="{ 'hover': hoverIndex === row.id }"
-                   :key="`row_${row.id}`"
-                   :style="renderRowPosition(row.id)"
-                   @mouseenter="onMouseEnter(row.id)"
+                   :class="{ 'hover': hoverIndex === row.$index }"
+                   :key="`row_${i}`"
+                   :style="renderRowPosition(row.$index)"
+                   @mouseenter="onMouseEnter(row.$index)"
                    @mouseleave="onMouseLeave">
                 <div v-for="(column, i) in columns"
                      :key="`column_cell-${i}`"
@@ -444,9 +444,9 @@ export default class InfinityTable extends Vue {
   /**
    * 渲染行的位置
    */
-  private renderRowPosition(id: number) {
+  private renderRowPosition(index: number) {
     return {
-      transform: `translateY(${id * this.rowHeight}px)`,
+      transform: `translateY(${index * this.rowHeight}px)`,
     }
   }
 
@@ -463,7 +463,10 @@ export default class InfinityTable extends Vue {
   private onScroll(ev: Event) {
     this.hoverIndex = null
     const el = ev.target as Element
-    this.$refs.theadMiddle.style.left = -el.scrollLeft + 'px'
+    this.updateRenderRowIndex()
+    if (this.$refs.theadMiddle.style.left !== -el.scrollLeft + 'px') {
+      this.$refs.theadMiddle.style.left = -el.scrollLeft + 'px'
+    }
     if (this.$refs.tfootMiddle) {
       this.$refs.tfootMiddle.style.left = -el.scrollLeft + 'px'
     }
@@ -473,7 +476,6 @@ export default class InfinityTable extends Vue {
     if (this.$refs.tbodyRightScroll) {
       this.$refs.tbodyRightScroll.style.top = -el.scrollTop + 'px'
     }
-    this.updateRenderRowIndex()
   }
 
   /**
@@ -481,14 +483,16 @@ export default class InfinityTable extends Vue {
    */
   private updateRenderRowIndex() {
     let index = Math.floor(this.$refs.tbody.scrollTop / this.rowHeight)
-    const showCount = this.getShowRowCount()
+    const showCount = this.getShowRowCount() + 2
     const count = index + showCount
     const indexArr: number[] = []
     for (index; index < count; index++) {
       indexArr.push(index)
     }
-    this.rowData = this.data.filter((x, i) => indexArr.includes(x.id))
-    this.scrollAnchor = this.$refs.tbody.scrollTop
+    this.rowData = this.data
+      .filter((x, i) => indexArr.includes(i))
+      .map((x, i) => ({ ...x, $index: indexArr[i] }))
+    // this.scrollAnchor = this.$refs.tbody.scrollTop
   }
 
   /**

@@ -80,17 +80,18 @@ export default class App extends Vue {
 
   public mounted() {
     this.data = []
-    for (let i = 0; i < 500; i++) {
+    for (let i = 1; i <= 500; i++) {
       this.data.push({
         id: i,
-        name: `学生${i + 1}`,
+        name: `学生${i}`,
         chinese: `${this.randomGrade()}`,
         math: `${this.randomGrade()}`,
         english: `${this.randomGrade()}`,
-        school: `第${i + 1}中学`,
+        school: `第${i}中学`,
         operation: '',
       })
     }
+    // Object.freeze(this.data)
   }
 
   public onClick(label: string) {
