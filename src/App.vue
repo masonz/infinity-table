@@ -4,12 +4,20 @@
                     :data="data"
                     :column-defs="columnDefs"
                     :height="750"
-                    hover>
+                    hover
+                    summary>
       <template slot-scope="s"
                 slot="id">
-        <span @click="onClick(s.row)"
-              style="color: #409eff;">
+        <span class="clickable"
+              @click="onClick(`点击了学号${s.row.id}`)">
           {{ s.row.id }}
+        </span>
+      </template>
+      <template slot-scope="s"
+                slot="operation">
+        <span class="clickable"
+              @click="onClick(`编辑${s.row.name}`)">
+          编辑
         </span>
       </template>
     </infinity-table>
@@ -26,38 +34,29 @@ import InfinityTable from './components/InfinityTable.vue'
   },
 })
 export default class App extends Vue {
-  protected data: any[] = []
-
-  public mounted() {
-    this.data = []
-    for (let i = 0; i < 500; i++) {
-      this.data.push({
-        id: i,
-        name: `name_${i}`,
-        class: `class_${i}`,
-        teacher: `teacher_${i}teacher_${i}teacher_${i}`,
-        school: `school_${i}`,
-        country: `country_${i}`,
-      })
-    }
-  }
 
   get columnDefs() {
     const colunms: any[] = []
     const firstRow = this.data.find((row) => row.id === 1)
     if (firstRow) {
-      Object.keys(firstRow).forEach((key, i) => {
-        const column = {
+      const keyMaps = Object.keys(firstRow)
+      keyMaps.forEach((key, i) => {
+        const column: { [key: string]: any } = {
           filed: key,
-          title: key,
+          title: this.subjectKeyMaps[key],
           width: 100 + i * 20,
           fixed: '',
-          slot: i === 0,
+          slot: false,
         }
         if (i <= 0) {
+          column.width = ''
+          column.slot = true
           column.fixed = 'left'
+          column.summary = '总计'
         }
-        if (i >= 5) {
+        if (i === keyMaps.length - 1) {
+          column.width = ''
+          column.slot = true
           column.fixed = 'right'
         }
         colunms.push(column)
@@ -66,8 +65,40 @@ export default class App extends Vue {
     return colunms
   }
 
-  public onClick(row: any) {
-    alert(`自定义单元格: ${row.id}`)
+  get subjectKeyMaps(): { [key: string]: string } {
+    return {
+      id: '学号',
+      name: '姓名',
+      chinese: '语文',
+      math: '数学',
+      english: '英语',
+      school: '学校',
+      operation: '操作',
+    }
+  }
+  protected data: any[] = []
+
+  public mounted() {
+    this.data = []
+    for (let i = 0; i < 500; i++) {
+      this.data.push({
+        id: i,
+        name: `学生${i + 1}`,
+        chinese: `${this.randomGrade()}`,
+        math: `${this.randomGrade()}`,
+        english: `${this.randomGrade()}`,
+        school: `第${i + 1}中学`,
+        operation: '',
+      })
+    }
+  }
+
+  public onClick(label: string) {
+    alert(label)
+  }
+
+  private randomGrade(): string {
+    return (Math.random() * 100).toFixed(2)
   }
 }
 </script>
@@ -79,5 +110,10 @@ export default class App extends Vue {
   -moz-osx-font-smoothing: grayscale;
   text-align: center;
   color: #2c3e50;
+}
+
+.clickable {
+  color: #409eff;
+  cursor: pointer;
 }
 </style>

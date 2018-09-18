@@ -30,10 +30,10 @@
             </div>
           </div>
         </div>
-        <div ref="theadMiddle"
-             class="table__header-middle"
-             :style="theadMiddleWrapStyle">
-          <div :style="theadMiddleStyle">
+        <div ref="theadMiddleWrapper"
+             class="table__header-middle-wrapper">
+          <div ref="theadMiddle"
+               class="table__header-middle">
             <div class="infinity-table__row">
               <div class="infinity-table__cell header-label"
                    v-for="(column, i) in columns"
@@ -146,10 +146,47 @@
       <!-- 表格部分 -->
 
       <!-- 表格底部 -->
-      <div class="infinity-table__foot">
-        <div class="table__foot-left"></div>
-        <div class="table__foot-middle"></div>
-        <div class="table__foot-right"></div>
+      <div ref="tfoot"
+           class="infinity-table__footer"
+           v-show="showSummary">
+        <div ref="tfootLeft"
+             class="table__footer-left"
+             v-show="showLeftFixed">
+          <div class="infinity-table__row">
+            <div class="infinity-table__cell"
+                 v-for="(column, i) in leftColumnDefs"
+                 :key="`column_header-fixLeft-${i}`"
+                 :style="getColStyle(column)">
+              <span>{{ getSummary(column) }}</span>
+            </div>
+          </div>
+        </div>
+        <div ref="tfootRight"
+             class="table__footer-right"
+             v-show="showRightFixed">
+          <div class="infinity-table__row">
+            <div class="infinity-table__cell"
+                 v-for="(column, i) in rightColumnDefs"
+                 :key="`column_header-fixRight-${i}`"
+                 :style="getColStyle(column)">
+              <span>{{ getSummary(column)}}</span>
+            </div>
+          </div>
+        </div>
+        <div ref="tfootMiddleWrapper"
+             class="table__footer-middle-wrapper">
+          <div ref="tfootMiddle"
+               class="table__footer-middle">
+            <div class="infinity-table__row">
+              <div class="infinity-table__cell"
+                   v-for="(column, i) in columns"
+                   :key="`column_footer-${i}`"
+                   :style="getColStyle(column)">
+                <span>{{ getSummary(column) }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       <!-- 表格底部 -->
 
@@ -163,9 +200,6 @@ import { Component, Prop, Vue } from 'vue-property-decorator'
 
 @Component
 export default class InfinityTable extends Vue {
-
-  //#endregion Data
-
   //#region Computed
 
   // table的动态样式
@@ -219,16 +253,29 @@ export default class InfinityTable extends Vue {
     return this.data.length * this.rowHeight
   }
 
+  // 是否显示底部合计
+  get showSummary() {
+    return this.summary !== false
+  }
+
+  //#endregion Computed
+
+  //#region Data
+
   // $refs declare
   public $refs!: {
     thead: HTMLElement
+    theadMiddle: HTMLElement
+    theadMiddleWrapper: HTMLElement
+    tfoot: HTMLElement
+    tfootMiddle: HTMLElement
+    tfootMiddleWrapper: HTMLElement
     tbody: HTMLElement
     tbodyLeft: HTMLElement
     tbodyRight: HTMLElement
     tbodyLeftScroll: HTMLElement
     tbodyRightScroll: HTMLElement,
   }
-  //#region Data
 
   // 表格高度
   @Prop({ default: 0 })
@@ -254,6 +301,10 @@ export default class InfinityTable extends Vue {
   @Prop({ default: false })
   private hover!: boolean
 
+  // 合计
+  @Prop({ default: false })
+  private summary!: boolean
+
   private rowData: any[] = []
   private scrollAnchor: number = 0
   private timer: any = null
@@ -261,15 +312,11 @@ export default class InfinityTable extends Vue {
   private tbodyStyle = {
     height: 'auto',
     top: '0',
+    paddingBottom: '0',
   }
   private tbodyMiddleViewStyle = {
     position: 'relative',
     marginRight: '0',
-  }
-  private theadMiddleWrapStyle = {}
-  private theadMiddleStyle = {
-    position: 'relative',
-    left: '0',
   }
   private tbodyLeftStyle = {
     position: 'relative',
@@ -284,7 +331,7 @@ export default class InfinityTable extends Vue {
 
   private hoverIndex: any = null
 
-  //#endregion Computed
+  //#endregion Data
 
   //#region Methods
 
@@ -324,6 +371,7 @@ export default class InfinityTable extends Vue {
     this.updateRenderRowIndex()
     this.renderTableHeader()
     this.renderTableBody()
+    this.renderTableFooter()
     this.setScrollListener()
 
     // let observer = new window.ResizeObserver(this.onResize)
@@ -338,11 +386,18 @@ export default class InfinityTable extends Vue {
    * 表头区域渲染
    */
   public renderTableHeader() {
-    this.theadMiddleWrapStyle = {
-      marginRight: this.colFixedRightWidth
-        ? `${this.colFixedRightWidth}px`
-        : '0px',
-    }
+    this.$refs.theadMiddleWrapper.style.marginRight = `${
+      this.colFixedRightWidth
+    }px`
+  }
+
+  /**
+   * 表底区域渲染
+   */
+  public renderTableFooter() {
+    this.$refs.tfootMiddleWrapper.style.marginRight = `${
+      this.colFixedRightWidth
+    }px`
   }
 
   /**
@@ -367,6 +422,9 @@ export default class InfinityTable extends Vue {
     this.tbodyStyle.top = thead
       ? thead.clientHeight + 'px'
       : this.tbodyStyle.top
+    if (this.$refs.tfoot) {
+      this.tbodyStyle.paddingBottom = this.$refs.tfoot.clientHeight + 'px'
+    }
   }
 
   public onMouseEnter(index: number) {
@@ -381,10 +439,6 @@ export default class InfinityTable extends Vue {
       return
     }
     this.hoverIndex = null
-  }
-
-  public compile(template: string) {
-    return Vue.compile(template)
   }
 
   /**
@@ -409,7 +463,10 @@ export default class InfinityTable extends Vue {
   private onScroll(ev: Event) {
     this.hoverIndex = null
     const el = ev.target as Element
-    this.theadMiddleStyle.left = -el.scrollLeft + 'px'
+    this.$refs.theadMiddle.style.left = -el.scrollLeft + 'px'
+    if (this.$refs.tfootMiddle) {
+      this.$refs.tfootMiddle.style.left = -el.scrollLeft + 'px'
+    }
     if (this.$refs.tbodyLeftScroll) {
       this.$refs.tbodyLeftScroll.style.top = -el.scrollTop + 'px'
     }
@@ -434,12 +491,28 @@ export default class InfinityTable extends Vue {
     this.scrollAnchor = this.$refs.tbody.scrollTop
   }
 
+  /**
+   * 获取合计值
+   * @param {any} column
+   * @returns string | number
+   */
+  private getSummary(column: any): string | number {
+    if (column.summary !== undefined) {
+      return column.summary
+    }
+    const summary = this.data
+      .map((d) => d[column.filed])
+      .reduce((d1, d2) => parseFloat(d1) + parseFloat(d2), 0)
+    return isNaN(summary) ? 'N/A' : summary.toFixed(2)
+  }
+
   //#endregion Methods
 }
 </script>
 
 <style lang="scss">
 $border-color: #ebeef5;
+$background-color: #f5f7fa;
 $hover-color: #f5f7fa;
 $black-color: #24292e;
 
@@ -474,7 +547,6 @@ $black-color: #24292e;
 }
 
 .infinity-table__row {
-  // display: block;
   display: flex;
   white-space: nowrap;
   width: 100%;
@@ -492,11 +564,11 @@ $black-color: #24292e;
   left: 0;
   width: 100%;
   overflow: hidden;
-  background-color: #f5f7f7;
+  background-color: $background-color;
   color: rgba(0, 0, 0, 0.54);
 
   .table__header-left,
-  .table__header-middle,
+  .table__header-middle-wrapper,
   .table__header-right {
     display: inline-block;
     box-sizing: border-box;
@@ -504,7 +576,7 @@ $black-color: #24292e;
     overflow: hidden;
   }
 
-  .table__header-middle {
+  .table__header-middle-wrapper {
     display: block;
   }
 
@@ -521,6 +593,10 @@ $black-color: #24292e;
   .infinity-table__cell {
     color: $black-color;
     font-weight: bold;
+  }
+
+  .table__header-middle {
+    position: relative;
   }
 }
 
@@ -566,7 +642,6 @@ $black-color: #24292e;
 
   .table__body-containner {
     position: relative;
-    scroll-behavior: smooth;
   }
 }
 
@@ -592,6 +667,48 @@ $black-color: #24292e;
     &:first-child {
       border-left: none;
     }
+  }
+}
+
+.infinity-table__footer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  overflow: hidden;
+  background-color: $background-color;
+  color: rgba(0, 0, 0, 0.54);
+
+  .table__footer-left,
+  .table__footer-middle-wrapper,
+  .table__footer-right {
+    display: inline-block;
+    box-sizing: border-box;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .table__footer-middle-wrapper {
+    display: block;
+  }
+
+  .table__footer-left {
+    float: left;
+    border-right: 1px solid $border-color;
+  }
+
+  .table__footer-right {
+    float: right;
+    border-left: 1px solid $border-color;
+  }
+
+  .infinity-table__cell {
+    color: $black-color;
+    border-bottom: none;
+  }
+
+  .table__footer-middle {
+    position: relative;
   }
 }
 </style>
