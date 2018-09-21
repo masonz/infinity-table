@@ -20,6 +20,7 @@
           编辑
         </span>
       </template>
+      <!-- <div slot="empty">没有数据</div> -->
     </infinity-table>
   </div>
 </template>
@@ -34,34 +35,30 @@ import InfinityTable from './components/InfinityTable.vue'
   },
 })
 export default class App extends Vue {
-
   get columnDefs() {
     const colunms: any[] = []
-    const firstRow = this.data.find((row) => row.id === 1)
-    if (firstRow) {
-      const keyMaps = Object.keys(firstRow)
-      keyMaps.forEach((key, i) => {
-        const column: { [key: string]: any } = {
-          filed: key,
-          title: this.subjectKeyMaps[key],
-          width: 100 + i * 20,
-          fixed: '',
-          slot: false,
-        }
-        if (i <= 0) {
-          column.width = ''
-          column.slot = true
-          column.fixed = 'left'
-          column.summary = '总计'
-        }
-        if (i === keyMaps.length - 1) {
-          column.width = ''
-          column.slot = true
-          column.fixed = 'right'
-        }
-        colunms.push(column)
-      })
-    }
+    const keyMaps = Object.keys(this.subjectKeyMaps)
+    keyMaps.forEach((key, i) => {
+      const column: { [key: string]: any } = {
+        filed: key,
+        title: this.subjectKeyMaps[key],
+        width: 100 + i * 20,
+        fixed: '',
+        slot: false,
+      }
+      if (i <= 0) {
+        column.width = ''
+        column.slot = true
+        column.fixed = 'left'
+        column.summary = '总计'
+      }
+      if (i === keyMaps.length - 1) {
+        column.width = ''
+        column.slot = true
+        column.fixed = 'right'
+      }
+      colunms.push(column)
+    })
     return colunms
   }
 

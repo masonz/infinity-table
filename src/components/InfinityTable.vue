@@ -50,9 +50,9 @@
       <!-- 表格部分 -->
       <div class="infinity-table__body"
            :style="tbodyStyle">
+
         <div ref="tbodyLeft"
              class="table__body-left"
-             :style="{ height: height - $refs.thead.clientHeight + 'px' }"
              v-if="showLeftFixed">
           <div ref="tbodyLeftScroll"
                class="table__body-containner">
@@ -83,7 +83,6 @@
         </div>
         <div ref="tbodyRight"
              class="table__body-right"
-             :style="{ height: height - $refs.thead.clientHeight + 'px' }"
              v-if="showRightFixed">
           <div class="table__body-containner"
                ref="tbodyRightScroll">
@@ -115,8 +114,15 @@
         <div class="table__body-middle"
              :style="tbodyMiddleViewStyle">
           <div ref="tbody"
-               style="overflow: auto; height: 100%; scroll-behavior: smooth;">
-            <div class="table__body-containner"
+               style="overflow: auto; height: 100%;">
+            <div v-if="!data.length"
+                 ref="emptyContainer"
+                 class="empty-container">
+              <div v-if="!$slots.empty">{{ emptyText }}</div>
+              <slot name="empty"></slot>
+            </div>
+            <div v-else
+                 class="table__body-containner"
                  :style="{ height: viewHeight + 'px' }">
               <div v-for="(row, i) in rowData"
                    class="infinity-table__row"
@@ -209,9 +215,16 @@ export default class InfinityTable extends Vue {
     }
   }
 
-  // 列定义内容
+  // 主视图的列定义内容
   get columns() {
     return this.columnDefs.filter((x) => !x.fixed)
+  }
+
+  // 主视图的列总宽度
+  get columnsWidth() {
+    return this.columns
+      .map((x) => x.width || this.defaultWidth)
+      .reduce((w1, w2) => w1 + w2, 0)
   }
 
   // 是否显示左侧固定布局
@@ -228,7 +241,7 @@ export default class InfinityTable extends Vue {
   get colFixedLeftWidth(): number {
     return this.leftColumnDefs
       .map((x) => x.width || this.defaultWidth)
-      .reduce((w1, w2) => w1 + w2, 0)
+      .reduce((w1, w2) => w1 + w2, '0')
   }
 
   // 是否显示右侧固定布局
@@ -274,7 +287,8 @@ export default class InfinityTable extends Vue {
     tbodyLeft: HTMLElement
     tbodyRight: HTMLElement
     tbodyLeftScroll: HTMLElement
-    tbodyRightScroll: HTMLElement,
+    tbodyRightScroll: HTMLElement
+    emptyContainer: HTMLElement,
   }
 
   // 表格高度
@@ -286,7 +300,7 @@ export default class InfinityTable extends Vue {
   private data!: any[]
 
   // 列定义集合
-  @Prop({ default: () => [] })
+  @Prop({ required: true })
   private columnDefs!: any[]
 
   // 行高
@@ -304,6 +318,9 @@ export default class InfinityTable extends Vue {
   // 合计
   @Prop({ default: false })
   private summary!: boolean
+
+  @Prop({ default: '暂无数据' })
+  private emptyText!: string
 
   private rowData: any[] = []
   private scrollAnchor: number = 0
@@ -425,6 +442,11 @@ export default class InfinityTable extends Vue {
     if (this.$refs.tfoot) {
       this.tbodyStyle.paddingBottom = this.$refs.tfoot.clientHeight + 'px'
     }
+    this.$refs.tbodyLeft.style.height = this.height - thead.clientHeight + 'px'
+    this.$refs.tbodyRight.style.height = this.height - thead.clientHeight + 'px'
+    if (this.$refs.emptyContainer) {
+      this.$refs.emptyContainer.style.minWidth = `${this.columnsWidth}px`
+    }
   }
 
   public onMouseEnter(index: number) {
@@ -507,7 +529,7 @@ export default class InfinityTable extends Vue {
     const summary = this.data
       .map((d) => d[column.filed])
       .reduce((d1, d2) => parseFloat(d1) + parseFloat(d2), 0)
-    return isNaN(summary) ? 'N/A' : summary.toFixed(2)
+    return isNaN(summary) || !this.data.length ? 'N/A' : summary.toFixed(2)
   }
 
   //#endregion Methods
@@ -714,5 +736,12 @@ $black-color: #24292e;
   .table__footer-middle {
     position: relative;
   }
+}
+
+.empty-container {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
 }
 </style>
