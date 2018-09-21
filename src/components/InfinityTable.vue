@@ -48,20 +48,20 @@
       <!-- 表头部分 -->
 
       <!-- 表格部分 -->
-      <div class="infinity-table__body"
-           :style="tbodyStyle">
-
+      <div ref="tbody"
+           class="infinity-table__body">
         <div ref="tbodyLeft"
              class="table__body-left"
              v-if="showLeftFixed">
           <div ref="tbodyLeftScroll"
                class="table__body-containner">
-            <div :style="tbodyLeftStyle">
+            <div ref="tbodyLeftView"
+                 class="table__body-leftview">
               <div v-for="(row, i) in rowData"
                    class="infinity-table__row"
                    :class="{ 'hover': hoverIndex === row.$index }"
                    :key="`tbody_left-row${i}`"
-                   :style="renderRowPosition(row.$index)"
+                   :style="getRowPosition(row.$index)"
                    @mouseenter="onMouseEnter(row.$index)"
                    @mouseleave="onMouseLeave">
                 <div v-for="(column, i) in leftColumnDefs"
@@ -86,12 +86,13 @@
              v-if="showRightFixed">
           <div class="table__body-containner"
                ref="tbodyRightScroll">
-            <div :style="tbodyRightStyle">
+            <div ref="tbodyRightView"
+                 class="tbody__body-rightview">
               <div v-for="(row, i) in rowData"
                    class="infinity-table__row"
                    :class="{ 'hover': hoverIndex === row.$index }"
                    :key="`tbody_right-row${i}`"
-                   :style="renderRowPosition(row.$index)"
+                   :style="getRowPosition(row.$index)"
                    @mouseenter="onMouseEnter(row.$index)"
                    @mouseleave="onMouseLeave">
                 <div v-for="(column, i) in rightColumnDefs"
@@ -111,10 +112,10 @@
             </div>
           </div>
         </div>
-        <div class="table__body-middle"
-             :style="tbodyMiddleViewStyle">
-          <div ref="tbody"
-               style="overflow: auto; height: 100%;">
+        <div ref="tbodyMiddle"
+             class="table__body-middle">
+          <div ref="tbodyMiddleScroll"
+               class="table__body-scrollview">
             <div v-if="!data.length"
                  ref="emptyContainer"
                  class="empty-container">
@@ -128,7 +129,7 @@
                    class="infinity-table__row"
                    :class="{ 'hover': hoverIndex === row.$index }"
                    :key="`row_${i}`"
-                   :style="renderRowPosition(row.$index)"
+                   :style="getRowPosition(row.$index)"
                    @mouseenter="onMouseEnter(row.$index)"
                    @mouseleave="onMouseLeave">
                 <div v-for="(column, i) in columns"
@@ -209,19 +210,19 @@ export default class InfinityTable extends Vue {
   //#region Computed
 
   // table的动态样式
-  get tableStyle() {
+  get tableStyle(): object {
     return {
       height: this.height ? this.height + 'px' : 'auto',
     }
   }
 
   // 主视图的列定义内容
-  get columns() {
+  get columns(): any[] {
     return this.columnDefs.filter((x) => !x.fixed)
   }
 
   // 主视图的列总宽度
-  get columnsWidth() {
+  get columnsWidth(): number {
     return this.columns
       .map((x) => x.width || this.defaultWidth)
       .reduce((w1, w2) => w1 + w2, 0)
@@ -233,7 +234,7 @@ export default class InfinityTable extends Vue {
   }
 
   // 左侧固定布局的列定义内容
-  get leftColumnDefs() {
+  get leftColumnDefs(): any[] {
     return this.columnDefs.filter((x) => x.fixed && x.fixed === 'left')
   }
 
@@ -250,7 +251,7 @@ export default class InfinityTable extends Vue {
   }
 
   // 右侧固定布局的列定义内容
-  get rightColumnDefs() {
+  get rightColumnDefs(): any[] {
     return this.columnDefs.filter((x) => x.fixed && x.fixed === 'right')
   }
 
@@ -267,7 +268,7 @@ export default class InfinityTable extends Vue {
   }
 
   // 是否显示底部合计
-  get showSummary() {
+  get showSummary(): boolean {
     return this.summary !== false
   }
 
@@ -286,8 +287,12 @@ export default class InfinityTable extends Vue {
     tbody: HTMLElement
     tbodyLeft: HTMLElement
     tbodyRight: HTMLElement
+    tbodyMiddle: HTMLElement
     tbodyLeftScroll: HTMLElement
     tbodyRightScroll: HTMLElement
+    tbodyMiddleScroll: HTMLElement
+    tbodyLeftView: HTMLElement
+    tbodyRightView: HTMLElement
     emptyContainer: HTMLElement,
   }
 
@@ -319,46 +324,54 @@ export default class InfinityTable extends Vue {
   @Prop({ default: false })
   private summary!: boolean
 
+  // 空数据的文案
   @Prop({ default: '暂无数据' })
   private emptyText!: string
 
   private rowData: any[] = []
-  private scrollAnchor: number = 0
-  private timer: any = null
-
-  private tbodyStyle = {
-    height: 'auto',
-    top: '0',
-    paddingBottom: '0',
-  }
-  private tbodyMiddleViewStyle = {
-    position: 'relative',
-    marginRight: '0',
-  }
-  private tbodyLeftStyle = {
-    position: 'relative',
-    height: 'auto',
-    width: '',
-  }
-  private tbodyRightStyle = {
-    position: 'relative',
-    height: 'auto',
-    width: '',
-  }
-
   private hoverIndex: any = null
 
   //#endregion Data
 
+  //#region Lifecycle
+
+  // mounted
+  public async mounted() {
+    await this.$nextTick()
+    this.updateRenderRowIndex()
+    this.setHeadStyle()
+    this.setBodyStyle()
+    this.setFootStyle()
+    this.setEmptyStyle()
+    this.setScrollListener()
+
+    // let observer = new window.ResizeObserver(this.onResize)
+    // observer.observe(<Element>this.$refs.table)
+  }
+
+  // beforeDestroy
+  public beforeDestroy(): void {
+    this.$refs.tbodyMiddleScroll.removeEventListener('scroll', this.onScroll)
+  }
+
+  //#endregion Lifecycle
+
   //#region Methods
 
-  // 获取视图内需要渲染行的数量
+  /**
+   * 获取视图内显示行数
+   * @returns {number}
+   */
   public getShowRowCount(): number {
     return Math.ceil(this.height / this.rowHeight)
   }
 
-  // 单元格样式
-  public getColStyle(column: any) {
+  /**
+   * 获取列样式
+   * @param {*} column
+   * @returns {object} style object
+   */
+  public getColStyle(column: any): object {
     const style = {
       flex: `1 0 ${this.defaultWidth}px`,
       width: `${this.defaultWidth}px`,
@@ -375,88 +388,71 @@ export default class InfinityTable extends Vue {
     return style
   }
 
-  // 组件生命周期
-  public async mounted() {
-    await this.$nextTick()
-    const count = this.getShowRowCount()
-    for (let index = 0; index < count; index++) {
-      const row = this.data.findIndex((x) => x === index)
-      if (row) {
-        this.rowData.push(row)
-      }
-    }
-    this.updateRenderRowIndex()
-    this.renderTableHeader()
-    this.renderTableBody()
-    this.renderTableFooter()
-    this.setScrollListener()
-
-    // let observer = new window.ResizeObserver(this.onResize)
-    // observer.observe(<Element>this.$refs.table)
-  }
-
-  public beforeDestroy() {
-    this.$refs.tbody.removeEventListener('scroll', this.onScroll)
+  /**
+   * 设置表格头部样式
+   */
+  public setHeadStyle(): void {
+    this.$refs.theadMiddleWrapper.style.marginRight = `${this.colFixedRightWidth}px`
   }
 
   /**
-   * 表头区域渲染
+   * 设置表格底部样式
    */
-  public renderTableHeader() {
-    this.$refs.theadMiddleWrapper.style.marginRight = `${
-      this.colFixedRightWidth
-    }px`
+  public setFootStyle(): void {
+    this.$refs.tfootMiddleWrapper.style.marginRight = `${this.colFixedRightWidth}px`
   }
 
   /**
-   * 表底区域渲染
+   * 设置空数据区域样式
    */
-  public renderTableFooter() {
-    this.$refs.tfootMiddleWrapper.style.marginRight = `${
-      this.colFixedRightWidth
-    }px`
-  }
-
-  /**
-   * 表格区域渲染
-   */
-  public renderTableBody() {
-    const thead = this.$refs.thead as HTMLElement
-    if (this.showLeftFixed) {
-      this.tbodyLeftStyle.width = this.colFixedLeftWidth + 'px'
-      this.tbodyLeftStyle.height = `${this.viewHeight}px`
-    }
-    if (this.showRightFixed) {
-      this.tbodyMiddleViewStyle.marginRight = this.$refs.tbodyRight
-        ? `-${this.$refs.tbodyRight.clientWidth}px`
-        : this.tbodyMiddleViewStyle.marginRight
-      this.tbodyRightStyle.width = this.colFixedRightWidth + 'px'
-      this.tbodyRightStyle.height = `${this.viewHeight}px`
-    }
-    this.tbodyStyle.height = this.height
-      ? `${this.height - thead.clientHeight}px`
-      : this.tbodyStyle.height
-    this.tbodyStyle.top = thead
-      ? thead.clientHeight + 'px'
-      : this.tbodyStyle.top
-    if (this.$refs.tfoot) {
-      this.tbodyStyle.paddingBottom = this.$refs.tfoot.clientHeight + 'px'
-    }
-    this.$refs.tbodyLeft.style.height = this.height - thead.clientHeight + 'px'
-    this.$refs.tbodyRight.style.height = this.height - thead.clientHeight + 'px'
+  public setEmptyStyle(): void {
     if (this.$refs.emptyContainer) {
       this.$refs.emptyContainer.style.minWidth = `${this.columnsWidth}px`
     }
   }
 
-  public onMouseEnter(index: number) {
+  /**
+   * 设置表格样式
+   */
+  public setBodyStyle(): void {
+    const thead = this.$refs.thead as HTMLElement
+    if (this.showLeftFixed) {
+      this.$refs.tbodyLeftView.style.width = this.colFixedLeftWidth + 'px'
+      this.$refs.tbodyLeftView.style.height = `${this.viewHeight}px`
+    }
+    if (this.showRightFixed) {
+      this.$refs.tbodyMiddle.style.marginRight = this.$refs.tbodyRight
+        ? `-${this.$refs.tbodyRight.clientWidth}px`
+        : '0'
+      this.$refs.tbodyRightView.style.width = this.colFixedRightWidth + 'px'
+      this.$refs.tbodyRightView.style.height = `${this.viewHeight}px`
+    }
+    this.$refs.tbody.style.height = this.height
+      ? `${this.height - thead.clientHeight}px`
+      : 'auto'
+    this.$refs.tbody.style.top = thead ? thead.clientHeight + 'px' : '0'
+    if (this.$refs.tfoot) {
+      this.$refs.tbody.style.paddingBottom = this.$refs.tfoot.clientHeight + 'px'
+    }
+    this.$refs.tbodyLeft.style.height = this.height - thead.clientHeight + 'px'
+    this.$refs.tbodyRight.style.height = this.height - thead.clientHeight + 'px'
+  }
+
+  /**
+   * 鼠标移入
+   * @param {string} index
+   */
+  public onMouseEnter(index: number): void {
     if (this.hover === false) {
       return
     }
     this.hoverIndex = index
   }
 
-  public onMouseLeave(event: Event) {
+  /**
+   * 鼠标移出
+   */
+  public onMouseLeave(): void {
     if (this.hover === false) {
       return
     }
@@ -464,9 +460,11 @@ export default class InfinityTable extends Vue {
   }
 
   /**
-   * 渲染行的位置
+   * 获取行位置
+   * @param {number} index
+   * @returns {object} style class
    */
-  private renderRowPosition(index: number) {
+  private getRowPosition(index: number): object {
     return {
       transform: `translateY(${index * this.rowHeight}px)`,
     }
@@ -476,36 +474,37 @@ export default class InfinityTable extends Vue {
    * 设置滚动监听事件
    */
   private setScrollListener(): void {
-    this.$refs.tbody.addEventListener('scroll', this.onScroll)
+    this.$refs.tbodyMiddleScroll.addEventListener('scroll', this.onScroll)
   }
 
   /**
    * 滚动事件
+   * @param {Event} ev
    */
-  private onScroll(ev: Event) {
+  private onScroll(ev: Event): void {
     this.hoverIndex = null
     const el = ev.target as Element
     this.updateRenderRowIndex()
-    if (this.$refs.theadMiddle.style.left !== -el.scrollLeft + 'px') {
-      this.$refs.theadMiddle.style.left = -el.scrollLeft + 'px'
+    if (this.$refs.theadMiddle.style.left !== `${-el.scrollLeft}px`) {
+      this.$refs.theadMiddle.style.left = `${-el.scrollLeft}px`
     }
     if (this.$refs.tfootMiddle) {
-      this.$refs.tfootMiddle.style.left = -el.scrollLeft + 'px'
+      this.$refs.tfootMiddle.style.left = `${-el.scrollLeft}px`
     }
     if (this.$refs.tbodyLeftScroll) {
-      this.$refs.tbodyLeftScroll.style.top = -el.scrollTop + 'px'
+      this.$refs.tbodyLeftScroll.style.top = `${-el.scrollTop}px`
     }
     if (this.$refs.tbodyRightScroll) {
-      this.$refs.tbodyRightScroll.style.top = -el.scrollTop + 'px'
+      this.$refs.tbodyRightScroll.style.top = `${-el.scrollTop}px`
     }
   }
 
   /**
    * 更新所有需要显示行数的下标数组
    */
-  private updateRenderRowIndex() {
-    let index = Math.floor(this.$refs.tbody.scrollTop / this.rowHeight)
-    const showCount = this.getShowRowCount() + 2
+  private updateRenderRowIndex(): void {
+    let index = Math.floor(this.$refs.tbodyMiddleScroll.scrollTop / this.rowHeight)
+    const showCount = this.getShowRowCount()
     const count = index + showCount
     const indexArr: number[] = []
     for (index; index < count; index++) {
@@ -514,7 +513,6 @@ export default class InfinityTable extends Vue {
     this.rowData = this.data
       .filter((x, i) => indexArr.includes(i))
       .map((x, i) => ({ ...x, $index: indexArr[i] }))
-    // this.scrollAnchor = this.$refs.tbody.scrollTop
   }
 
   /**
@@ -639,6 +637,7 @@ $black-color: #24292e;
   }
 
   .table__body-middle {
+    position: relative;
     display: block;
     overflow: auto;
     height: 100%;
@@ -667,6 +666,16 @@ $black-color: #24292e;
   }
 
   .table__body-containner {
+    position: relative;
+  }
+
+  .table__body-scrollview {
+    height: 100%;
+    overflow: auto;
+  }
+
+  .table__body-leftview,
+  .table__body-rightview {
     position: relative;
   }
 }
