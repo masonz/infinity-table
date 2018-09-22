@@ -31,7 +31,8 @@
           </div>
         </div>
         <div ref="theadMiddleWrapper"
-             class="table__header-middle-wrapper">
+             class="table__header-middle-wrapper"
+             :style="{ paddingRight: getPaddingRight($refs.theadMiddleWrapper) }">
           <div ref="theadMiddle"
                class="table__header-middle">
             <div class="infinity-table__row">
@@ -181,7 +182,8 @@
           </div>
         </div>
         <div ref="tfootMiddleWrapper"
-             class="table__footer-middle-wrapper">
+             class="table__footer-middle-wrapper"
+             :style="{ paddingRight: getPaddingRight($refs.theadMiddleWrapper) }">
           <div ref="tfootMiddle"
                class="table__footer-middle">
             <div class="infinity-table__row">
@@ -344,7 +346,6 @@ export default class InfinityTable extends Vue {
     this.setFootStyle()
     this.setEmptyStyle()
     this.setScrollListener()
-
     // let observer = new window.ResizeObserver(this.onResize)
     // observer.observe(<Element>this.$refs.table)
   }
@@ -468,6 +469,20 @@ export default class InfinityTable extends Vue {
     return {
       transform: `translateY(${index * this.rowHeight}px)`,
     }
+  }
+
+  /**
+   * 获取主视图宽度，计算差距后添加右间距
+   * 目前主要是滚动条的差异
+   * @param {number} index
+   * @returns {object} style class
+   */
+  private getPaddingRight(el: HTMLElement) {
+    let paddingRight = ''
+    if (this.$refs.tbodyMiddleScroll) {
+      paddingRight = `${el.clientWidth - this.$refs.tbodyMiddleScroll.clientWidth}px`
+    }
+    return paddingRight
   }
 
   /**
