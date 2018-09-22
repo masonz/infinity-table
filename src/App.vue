@@ -1,9 +1,9 @@
 <template>
   <div id="app">
-    <infinity-table style="margin: 0 100px;"
+    <infinity-table style="margin: 75px 100px;"
                     :data="data"
                     :column-defs="columnDefs"
-                    :height="750"
+                    :height="650"
                     hover
                     summary>
       <template slot-scope="s"
@@ -42,7 +42,7 @@ export default class App extends Vue {
       const column: { [key: string]: any } = {
         filed: key,
         title: this.subjectKeyMaps[key],
-        width: 100 + i * 20,
+        width: 100 + i * 10,
         fixed: '',
         slot: false,
       }
@@ -69,6 +69,8 @@ export default class App extends Vue {
       chinese: '语文',
       math: '数学',
       english: '英语',
+      physics: '物理',
+      chemistry: '化学',
       school: '学校',
       operation: '操作',
     }
@@ -84,11 +86,13 @@ export default class App extends Vue {
         chinese: `${this.randomGrade()}`,
         math: `${this.randomGrade()}`,
         english: `${this.randomGrade()}`,
+        physics: `${this.randomGrade()}`,
+        chemistry: `${this.randomGrade()}`,
         school: `第${i}中学`,
         operation: '',
       })
     }
-    // Object.freeze(this.data)
+    Object.freeze(this.data)
   }
 
   public onClick(label: string) {
