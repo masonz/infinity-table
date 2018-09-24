@@ -35,6 +35,8 @@ import InfinityTable from './components/InfinityTable.vue'
   },
 })
 export default class App extends Vue {
+  protected data: ReadonlyArray<any> = []
+
   get columnDefs() {
     const colunms: any[] = []
     const keyMaps = Object.keys(this.subjectKeyMaps)
@@ -75,12 +77,11 @@ export default class App extends Vue {
       operation: '操作',
     }
   }
-  protected data: any[] = []
 
   public mounted() {
-    this.data = []
+    const data = []
     for (let i = 1; i <= 10000; i++) {
-      this.data.push({
+      data.push({
         id: i,
         name: `学生${i}`,
         chinese: `${this.randomGrade()}`,
@@ -92,7 +93,7 @@ export default class App extends Vue {
         operation: '',
       })
     }
-    Object.freeze(this.data)
+    this.data = Object.freeze(data)
   }
 
   public onClick(label: string) {
