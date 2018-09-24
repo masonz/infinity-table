@@ -79,7 +79,7 @@ export default class App extends Vue {
 
   public mounted() {
     this.data = []
-    for (let i = 1; i <= 500; i++) {
+    for (let i = 1; i <= 10000; i++) {
       this.data.push({
         id: i,
         name: `学生${i}`,

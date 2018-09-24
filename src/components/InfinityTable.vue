@@ -165,7 +165,7 @@
                  v-for="(column, i) in leftColumnDefs"
                  :key="`column_header-fixLeft-${i}`"
                  :style="getColStyle(column)">
-              <span>{{ getSummary(column) }}</span>
+              <span>{{ summaryData[column.filed] }}</span>
             </div>
           </div>
         </div>
@@ -177,7 +177,7 @@
                  v-for="(column, i) in rightColumnDefs"
                  :key="`column_header-fixRight-${i}`"
                  :style="getColStyle(column)">
-              <span>{{ getSummary(column)}}</span>
+              <span>{{ summaryData[column.filed] }}</span>
             </div>
           </div>
         </div>
@@ -191,7 +191,7 @@
                    v-for="(column, i) in columns"
                    :key="`column_footer-${i}`"
                    :style="getColStyle(column)">
-                <span>{{ getSummary(column) }}</span>
+                <span>{{ summaryData[column.filed] }}</span>
               </div>
             </div>
           </div>
@@ -298,6 +298,8 @@ export default class InfinityTable extends Vue {
     emptyContainer: HTMLElement,
   }
 
+  protected summaryData: { [key: string]: any } = {}
+
   // 表格高度
   @Prop({ default: 0 })
   private height!: number
@@ -340,6 +342,7 @@ export default class InfinityTable extends Vue {
   // mounted
   public async mounted() {
     await this.$nextTick()
+    this.calculateTotal()
     this.updateRenderRowIndex()
     this.setHeadStyle()
     this.setBodyStyle()
@@ -521,28 +524,28 @@ export default class InfinityTable extends Vue {
     let index = Math.floor(this.$refs.tbodyMiddleScroll.scrollTop / this.rowHeight)
     const showCount = this.getShowRowCount()
     const count = index + showCount
-    const indexArr: number[] = []
-    for (index; index < count; index++) {
-      indexArr.push(index)
+    this.rowData.splice(0, this.rowData.length)
+    for (index; index <= count; index++) {
+      this.rowData.push({ ...this.data[index], $index: index })
     }
-    this.rowData = this.data
-      .filter((x, i) => indexArr.includes(i))
-      .map((x, i) => ({ ...x, $index: indexArr[i] }))
   }
 
   /**
-   * 获取合计值
-   * @param {any} column
-   * @returns string | number
+   * 计算合计
    */
-  private getSummary(column: any): string | number {
-    if (column.summary !== undefined) {
-      return column.summary
-    }
-    const summary = this.data
-      .map((d) => d[column.filed])
-      .reduce((d1, d2) => parseFloat(d1) + parseFloat(d2), 0)
-    return isNaN(summary) || !this.data.length ? 'N/A' : summary.toFixed(2)
+  private calculateTotal(): void {
+    this.columnDefs.map((col) => {
+      if (col.summary !== undefined) {
+        this.$set(this.summaryData, col.filed, col.summary)
+      } else {
+        const summary = this.data
+          .map((d) => d[col.filed])
+          .reduce((d1, d2) => parseFloat(d1) + parseFloat(d2), 0)
+        const summaryVal =
+          isNaN(summary) || !this.data.length ? 'N/A' : summary.toFixed(2)
+        this.$set(this.summaryData, col.filed, summaryVal)
+      }
+    })
   }
 
   //#endregion Methods
