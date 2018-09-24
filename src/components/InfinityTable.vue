@@ -58,10 +58,10 @@
                class="table__body-containner">
             <div ref="tbodyLeftView"
                  class="table__body-leftview">
-              <div v-for="(row, i) in rowData"
+              <div v-for="row in rowData"
                    class="infinity-table__row"
                    :class="{ 'hover': hoverIndex === row.$index }"
-                   :key="`tbody_left-row${i}`"
+                   :key="`tbody_left-row${row.$index}`"
                    :style="getRowPosition(row.$index)"
                    @mouseenter="onMouseEnter(row.$index)"
                    @mouseleave="onMouseLeave">
@@ -89,10 +89,10 @@
                ref="tbodyRightScroll">
             <div ref="tbodyRightView"
                  class="tbody__body-rightview">
-              <div v-for="(row, i) in rowData"
+              <div v-for="row in rowData"
                    class="infinity-table__row"
                    :class="{ 'hover': hoverIndex === row.$index }"
-                   :key="`tbody_right-row${i}`"
+                   :key="`tbody_right-row${row.$index}`"
                    :style="getRowPosition(row.$index)"
                    @mouseenter="onMouseEnter(row.$index)"
                    @mouseleave="onMouseLeave">
@@ -126,10 +126,10 @@
             <div v-else
                  class="table__body-containner"
                  :style="{ height: viewHeight + 'px' }">
-              <div v-for="(row, i) in rowData"
+              <div v-for="row in rowData"
                    class="infinity-table__row"
                    :class="{ 'hover': hoverIndex === row.$index }"
-                   :key="`row_${i}`"
+                   :key="`row_${row.$index}`"
                    :style="getRowPosition(row.$index)"
                    @mouseenter="onMouseEnter(row.$index)"
                    @mouseleave="onMouseLeave">
@@ -274,6 +274,13 @@ export default class InfinityTable extends Vue {
     return this.summary !== false
   }
 
+  /**
+   * 获取视图内显示行数
+   */
+  get visibleRowCount(): number {
+    return Math.ceil(this.height / this.rowHeight)
+  }
+
   //#endregion Computed
 
   //#region Data
@@ -324,7 +331,7 @@ export default class InfinityTable extends Vue {
   @Prop({ default: false })
   private hover!: boolean
 
-  // 合计
+  // 显示合计
   @Prop({ default: false })
   private summary!: boolean
 
@@ -332,8 +339,16 @@ export default class InfinityTable extends Vue {
   @Prop({ default: '暂无数据' })
   private emptyText!: string
 
+  // 可视数据
   private rowData: any[] = []
+  // 当前悬浮行的下标
   private hoverIndex: any = null
+  // 记录距离顶部滚动偏移量
+  private recordScrollTop: number = 0
+  // 记录距离左边滚动偏移量
+  private recordScrollLeft: number = 0
+  // requestAnimationFrame loop
+  private loop: number = 0
 
   //#endregion Data
 
@@ -348,27 +363,19 @@ export default class InfinityTable extends Vue {
     this.setBodyStyle()
     this.setFootStyle()
     this.setEmptyStyle()
-    this.setScrollListener()
+    this.loop = requestAnimationFrame(this.onScroll)
     // let observer = new window.ResizeObserver(this.onResize)
     // observer.observe(<Element>this.$refs.table)
   }
 
   // beforeDestroy
   public beforeDestroy(): void {
-    this.$refs.tbodyMiddleScroll.removeEventListener('scroll', this.onScroll)
+    cancelAnimationFrame(this.loop)
   }
 
   //#endregion Lifecycle
 
   //#region Methods
-
-  /**
-   * 获取视图内显示行数
-   * @returns {number}
-   */
-  public getShowRowCount(): number {
-    return Math.ceil(this.height / this.rowHeight)
-  }
 
   /**
    * 获取列样式
@@ -470,7 +477,7 @@ export default class InfinityTable extends Vue {
    */
   private getRowPosition(index: number): object {
     return {
-      transform: `translateY(${index * this.rowHeight}px)`,
+      transform: `translate3d(0, ${index * this.rowHeight}px ,0)`,
     }
   }
 
@@ -489,44 +496,45 @@ export default class InfinityTable extends Vue {
   }
 
   /**
-   * 设置滚动监听事件
-   */
-  private setScrollListener(): void {
-    this.$refs.tbodyMiddleScroll.addEventListener('scroll', this.onScroll)
-  }
-
-  /**
    * 滚动事件
-   * @param {Event} ev
    */
-  private onScroll(ev: Event): void {
+  private onScroll(): void {
     this.hoverIndex = null
-    const el = ev.target as Element
-    this.updateRenderRowIndex()
-    if (this.$refs.theadMiddle.style.left !== `${-el.scrollLeft}px`) {
-      this.$refs.theadMiddle.style.left = `${-el.scrollLeft}px`
+    const { scrollTop, scrollLeft } = this.$refs.tbodyMiddleScroll
+
+    if (scrollLeft !== this.recordScrollLeft) {
+      this.recordScrollLeft = scrollLeft
+      if (this.$refs.theadMiddle.style.left !== `-${scrollLeft}px`) {
+        this.$refs.theadMiddle.style.left = `-${scrollLeft}px`
+      }
+      if (this.$refs.tfootMiddle.style.left !== `-${scrollLeft}px`) {
+        this.$refs.tfootMiddle.style.left = `-${scrollLeft}px`
+      }
     }
-    if (this.$refs.tfootMiddle) {
-      this.$refs.tfootMiddle.style.left = `${-el.scrollLeft}px`
+
+    if (scrollTop !== this.recordScrollTop) {
+      this.recordScrollTop = scrollTop
+      if (this.$refs.tbodyLeftScroll) {
+        this.$refs.tbodyLeftScroll.style.top = `-${scrollTop}px`
+      }
+      if (this.$refs.tbodyRightScroll) {
+        this.$refs.tbodyRightScroll.style.top = `-${scrollTop}px`
+      }
+      this.updateRenderRowIndex()
     }
-    if (this.$refs.tbodyLeftScroll) {
-      this.$refs.tbodyLeftScroll.style.top = `${-el.scrollTop}px`
-    }
-    if (this.$refs.tbodyRightScroll) {
-      this.$refs.tbodyRightScroll.style.top = `${-el.scrollTop}px`
-    }
+
+    this.loop = requestAnimationFrame(this.onScroll)
   }
 
   /**
    * 更新所有需要显示行数的下标数组
    */
   private updateRenderRowIndex(): void {
-    let index = Math.floor(this.$refs.tbodyMiddleScroll.scrollTop / this.rowHeight)
-    const showCount = this.getShowRowCount()
-    const count = index + showCount
-    this.rowData.splice(0, this.rowData.length)
-    for (index; index <= count; index++) {
-      this.rowData.push({ ...this.data[index], $index: index })
+    this.rowData = []
+    let startIndex = Math.floor(this.recordScrollTop / this.rowHeight)
+    const endIndex = startIndex + this.visibleRowCount
+    for (startIndex; startIndex <= endIndex; startIndex++) {
+      this.rowData.push(Object.freeze({ ...this.data[startIndex], $index: startIndex }))
     }
   }
 
@@ -685,11 +693,15 @@ $black-color: #24292e;
 
   .table__body-containner {
     position: relative;
+    transform: translate3d(0, 0, 0);
   }
 
   .table__body-scrollview {
     height: 100%;
     overflow: auto;
+    transform: translate3d(0, 0, 0);
+    scroll-behavior: smooth;
+    background-attachment: fixed;
   }
 
   .table__body-leftview,
