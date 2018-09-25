@@ -499,7 +499,6 @@ export default class InfinityTable extends Vue {
    * 滚动事件
    */
   private onScroll(): void {
-    this.hoverIndex = null
     const { scrollTop, scrollLeft } = this.$refs.tbodyMiddleScroll
 
     if (scrollLeft !== this.recordScrollLeft) {
@@ -513,6 +512,7 @@ export default class InfinityTable extends Vue {
     }
 
     if (scrollTop !== this.recordScrollTop) {
+      this.hoverIndex = null
       this.recordScrollTop = scrollTop
       if (this.$refs.tbodyLeftScroll) {
         this.$refs.tbodyLeftScroll.style.top = `-${scrollTop}px`
