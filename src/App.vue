@@ -20,7 +20,7 @@
           编辑
         </span>
       </template>
-      <!-- <div slot="empty">没有数据</div> -->
+      <div slot="empty">没有数据</div>
     </infinity-table>
   </div>
 </template>
@@ -73,13 +73,14 @@ export default class App extends Vue {
       english: '英语',
       physics: '物理',
       chemistry: '化学',
+      computer: '计算机',
       school: '学校',
       operation: '操作',
     }
   }
 
   public mounted() {
-    const data = []
+    const data: any[] = []
     for (let i = 1; i <= 10000; i++) {
       data.push({
         id: i,
@@ -89,6 +90,7 @@ export default class App extends Vue {
         english: `${this.randomGrade()}`,
         physics: `${this.randomGrade()}`,
         chemistry: `${this.randomGrade()}`,
+        computer: `${this.randomGrade()}`,
         school: `第${i}中学`,
         operation: '',
       })

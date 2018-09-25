@@ -534,7 +534,9 @@ export default class InfinityTable extends Vue {
     let startIndex = Math.floor(this.recordScrollTop / this.rowHeight)
     const endIndex = startIndex + this.visibleRowCount
     for (startIndex; startIndex <= endIndex; startIndex++) {
-      this.rowData.push(Object.freeze({ ...this.data[startIndex], $index: startIndex }))
+      if (this.data[startIndex]) {
+        this.rowData.push(Object.freeze({ ...this.data[startIndex], $index: startIndex }))
+      }
     }
   }
 
