@@ -62,7 +62,7 @@
                    class="infinity-table__row"
                    :class="{ 'hover': hoverIndex === row.$index }"
                    :key="`tbody_left-row${row.$index}`"
-                   :style="getRowPosition(row.$index)"
+                   :style="row.$style"
                    @mouseenter="onMouseEnter(row.$index)"
                    @mouseleave="onMouseLeave">
                 <div v-for="(column, i) in leftColumnDefs"
@@ -93,7 +93,7 @@
                    class="infinity-table__row"
                    :class="{ 'hover': hoverIndex === row.$index }"
                    :key="`tbody_right-row${row.$index}`"
-                   :style="getRowPosition(row.$index)"
+                   :style="row.$style"
                    @mouseenter="onMouseEnter(row.$index)"
                    @mouseleave="onMouseLeave">
                 <div v-for="(column, i) in rightColumnDefs"
@@ -130,7 +130,7 @@
                    class="infinity-table__row"
                    :class="{ 'hover': hoverIndex === row.$index }"
                    :key="`row_${row.$index}`"
-                   :style="getRowPosition(row.$index)"
+                   :style="row.$style"
                    @mouseenter="onMouseEnter(row.$index)"
                    @mouseleave="onMouseLeave">
                 <div v-for="(column, i) in columns"
@@ -292,13 +292,6 @@ export default class InfinityTable extends Vue {
     return this.summary !== false
   }
 
-  /**
-   * 获取视图内显示行数
-   */
-  get visibleRowCount(): number {
-    return Math.ceil(this.height / this.rowHeight)
-  }
-
   //#endregion Computed
 
   //#region Data
@@ -359,6 +352,8 @@ export default class InfinityTable extends Vue {
 
   // 可视数据
   private rowData: any[] = []
+  // 可见行数
+  private visibleCount: number = 0
   // 当前悬浮行的下标
   private hoverIndex: any = null
   // 记录距离顶部滚动偏移量
@@ -375,6 +370,7 @@ export default class InfinityTable extends Vue {
   // mounted
   public async mounted() {
     await this.$nextTick()
+    this.getVisibleRowCount()
     this.calculateTotal()
     this.updateRenderRowIndex()
     this.setHeadStyle()
@@ -467,17 +463,6 @@ export default class InfinityTable extends Vue {
   }
 
   /**
-   * 获取行位置
-   * @param {number} index
-   * @returns {object} style class
-   */
-  private getRowPosition(index: number): object {
-    return {
-      transform: `translate3d(0, ${index * this.rowHeight}px ,0)`,
-    }
-  }
-
-  /**
    * 获取主视图宽度，计算差距后添加右间距
    * 目前主要是滚动条的差异
    * @param {number} index
@@ -492,11 +477,19 @@ export default class InfinityTable extends Vue {
   }
 
   /**
+   * 获取视图内显示行数
+   */
+  private getVisibleRowCount(): void {
+    const thead = this.$refs.thead
+    const visibleHeight = this.height - thead.clientHeight
+    this.visibleCount = Math.ceil(visibleHeight / this.rowHeight)
+  }
+
+  /**
    * 滚动事件
    */
   private onScroll(): void {
     const { scrollTop, scrollLeft } = this.$refs.tbodyMiddleScroll
-
     if (scrollLeft !== this.recordScrollLeft) {
       this.recordScrollLeft = scrollLeft
       if (this.$refs.theadMiddle.style.left !== `-${scrollLeft}px`) {
@@ -511,14 +504,13 @@ export default class InfinityTable extends Vue {
       this.hoverIndex = null
       this.recordScrollTop = scrollTop
       if (this.$refs.tbodyLeftScroll) {
-        this.$refs.tbodyLeftScroll.style.top = `-${scrollTop}px`
+        this.$refs.tbodyLeftScroll.style.transform = `translate3d(0, -${scrollTop}px, 0)`
       }
       if (this.$refs.tbodyRightScroll) {
-        this.$refs.tbodyRightScroll.style.top = `-${scrollTop}px`
+        this.$refs.tbodyRightScroll.style.transform = `translate3d(0, -${scrollTop}px, 0)`
       }
       this.updateRenderRowIndex()
     }
-
     this.loop = requestAnimationFrame(this.onScroll)
   }
 
@@ -527,11 +519,17 @@ export default class InfinityTable extends Vue {
    */
   private updateRenderRowIndex(): void {
     this.rowData = []
-    let startIndex = Math.floor(this.recordScrollTop / this.rowHeight)
-    const endIndex = startIndex + this.visibleRowCount
-    for (startIndex; startIndex <= endIndex; startIndex++) {
-      if (this.data[startIndex]) {
-        this.rowData.push(Object.freeze({ ...this.data[startIndex], $index: startIndex }))
+    const startIndex = Math.floor(this.recordScrollTop / this.rowHeight)
+    const endIndex = startIndex + this.visibleCount
+    for (let index = startIndex; index <= endIndex; index++) {
+      if (this.data[index]) {
+        this.rowData.push(
+          Object.freeze({
+            ...this.data[index],
+            $index: index,
+            $style: { transform: `translate3d(0, ${index * this.rowHeight}px ,0)` },
+          }),
+        )
       }
     }
   }
@@ -575,6 +573,8 @@ $black-color: #24292e;
 
   * {
     box-sizing: border-box;
+    cursor: default;
+    user-select: none;
   }
 }
 
@@ -667,22 +667,23 @@ $black-color: #24292e;
     height: 100%;
   }
 
-  .table__body-left {
-    float: left;
-    border-right: 1px solid $border-color;
+  .table__body-left,
+  .table__body-right {
+    transform: translate3d(0, 0, 0);
 
     .infinity-table__row {
       width: initial;
     }
   }
 
+  .table__body-left {
+    float: left;
+    border-right: 1px solid $border-color;
+  }
+
   .table__body-right {
     float: right;
     border-left: 1px solid $border-color;
-
-    .infinity-table__row {
-      width: initial;
-    }
   }
 
   .infinity-table__row {
@@ -691,17 +692,11 @@ $black-color: #24292e;
 
   .table__body-containner {
     position: relative;
-    transform: translate3d(0, 0, 0);
-    scroll-behavior: smooth;
-    background-attachment: fixed;
   }
 
   .table__body-scrollview {
     height: 100%;
     overflow: auto;
-    transform: translate3d(0, 0, 0);
-    scroll-behavior: smooth;
-    background-attachment: fixed;
   }
 
   .table__body-leftview,
