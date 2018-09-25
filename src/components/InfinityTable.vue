@@ -13,7 +13,7 @@
             <div class="infinity-table__cell header-label"
                  v-for="(column, i) in leftColumnDefs"
                  :key="`column_header-fixLeft-${i}`"
-                 :style="getColStyle(column)">
+                 :style="column.$style">
               <span>{{ column.title }}</span>
             </div>
           </div>
@@ -25,7 +25,7 @@
             <div class="infinity-table__cell header-label"
                  v-for="(column, i) in rightColumnDefs"
                  :key="`column_header-fixRight-${i}`"
-                 :style="getColStyle(column)">
+                 :style="column.$style">
               <span>{{ column.title }}</span>
             </div>
           </div>
@@ -39,7 +39,7 @@
               <div class="infinity-table__cell header-label"
                    v-for="(column, i) in columns"
                    :key="`column_header-${i}`"
-                   :style="getColStyle(column)">
+                   :style="column.$style">
                 <span>{{ column.title }}</span>
               </div>
             </div>
@@ -67,7 +67,7 @@
                    @mouseleave="onMouseLeave">
                 <div v-for="(column, i) in leftColumnDefs"
                      :key="`column_cell-${i}`"
-                     :style="getColStyle(column)"
+                     :style="column.$style"
                      class="infinity-table__cell">
                   <slot v-if="column.slot"
                         :name="column.filed"
@@ -98,7 +98,7 @@
                    @mouseleave="onMouseLeave">
                 <div v-for="(column, i) in rightColumnDefs"
                      :key="`column_cell-${i}`"
-                     :style="getColStyle(column)"
+                     :style="column.$style"
                      class="infinity-table__cell">
                   <slot v-if="column.slot"
                         :name="column.filed"
@@ -135,7 +135,7 @@
                    @mouseleave="onMouseLeave">
                 <div v-for="(column, i) in columns"
                      :key="`column_cell-${i}`"
-                     :style="getColStyle(column)"
+                     :style="column.$style"
                      class="infinity-table__cell">
                   <slot v-if="column.slot"
                         :name="column.filed"
@@ -164,7 +164,7 @@
             <div class="infinity-table__cell"
                  v-for="(column, i) in leftColumnDefs"
                  :key="`column_header-fixLeft-${i}`"
-                 :style="getColStyle(column)">
+                 :style="column.$style">
               <span>{{ summaryData[column.filed] }}</span>
             </div>
           </div>
@@ -176,7 +176,7 @@
             <div class="infinity-table__cell"
                  v-for="(column, i) in rightColumnDefs"
                  :key="`column_header-fixRight-${i}`"
-                 :style="getColStyle(column)">
+                 :style="column.$style">
               <span>{{ summaryData[column.filed] }}</span>
             </div>
           </div>
@@ -190,7 +190,7 @@
               <div class="infinity-table__cell"
                    v-for="(column, i) in columns"
                    :key="`column_footer-${i}`"
-                   :style="getColStyle(column)">
+                   :style="column.$style">
                 <span>{{ summaryData[column.filed] }}</span>
               </div>
             </div>
@@ -220,7 +220,13 @@ export default class InfinityTable extends Vue {
 
   // 主视图的列定义内容
   get columns(): any[] {
-    return this.columnDefs.filter((x) => !x.fixed)
+    return this.columnDefs.filter((col) => !col.fixed).map((col) => ({
+      ...col,
+      $style: {
+        flex: `1 0 ${col.width || this.defaultWidth}px`,
+        width: `${col.width || this.defaultWidth}px`,
+      },
+    }))
   }
 
   // 主视图的列总宽度
@@ -237,7 +243,13 @@ export default class InfinityTable extends Vue {
 
   // 左侧固定布局的列定义内容
   get leftColumnDefs(): any[] {
-    return this.columnDefs.filter((x) => x.fixed && x.fixed === 'left')
+    return this.columnDefs.filter((col) => col.fixed && col.fixed === 'left').map((col) => ({
+      ...col,
+      $style: {
+        flex: `1 0 ${col.width || this.defaultWidth}px`,
+        width: `${col.width || this.defaultWidth}px`,
+      },
+    }))
   }
 
   // 左侧固定布局的总宽度
@@ -254,7 +266,13 @@ export default class InfinityTable extends Vue {
 
   // 右侧固定布局的列定义内容
   get rightColumnDefs(): any[] {
-    return this.columnDefs.filter((x) => x.fixed && x.fixed === 'right')
+    return this.columnDefs.filter((col) => col.fixed && col.fixed === 'right').map((col) => ({
+      ...col,
+      $style: {
+        flex: `1 0 ${col.width || this.defaultWidth}px`,
+        width: `${col.width || this.defaultWidth}px`,
+      },
+    }))
   }
 
   // 右侧固定布局的总宽度
@@ -376,28 +394,6 @@ export default class InfinityTable extends Vue {
   //#endregion Lifecycle
 
   //#region Methods
-
-  /**
-   * 获取列样式
-   * @param {*} column
-   * @returns {object} style object
-   */
-  public getColStyle(column: any): object {
-    const style = {
-      flex: `1 0 ${this.defaultWidth}px`,
-      width: `${this.defaultWidth}px`,
-      minWidth: '0',
-    }
-    if (column.width) {
-      style.width = `${column.width + 'px'}`
-      style.flex = `1 0 ${column.width + 'px'}`
-    } else if (column.minWidth) {
-      style.width = '0'
-      style.minWidth = column.minWidth + 'px'
-      style.flex = `1 0 ${column.minWidth + 'px'}`
-    }
-    return style
-  }
 
   /**
    * 设置表格头部样式
@@ -696,6 +692,8 @@ $black-color: #24292e;
   .table__body-containner {
     position: relative;
     transform: translate3d(0, 0, 0);
+    scroll-behavior: smooth;
+    background-attachment: fixed;
   }
 
   .table__body-scrollview {

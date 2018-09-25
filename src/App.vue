@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <infinity-table style="margin: 75px 100px;"
+    <infinity-table style="margin: 60px 100px;"
                     :data="data"
                     :column-defs="columnDefs"
                     :height="650"
@@ -15,10 +15,16 @@
       </template>
       <template slot-scope="s"
                 slot="operation">
-        <span class="clickable"
-              @click="onClick(`编辑${s.row.name}`)">
-          编辑
-        </span>
+        <div>
+          <span class="clickable"
+                @click="onClick(`查看${s.row.name}`)">
+            查看
+          </span>
+          <span class="clickable"
+                @click="onClick(`编辑${s.row.name}`)">
+            编辑
+          </span>
+        </div>
       </template>
       <div slot="empty">没有数据</div>
     </infinity-table>
@@ -53,6 +59,9 @@ export default class App extends Vue {
         column.slot = true
         column.fixed = 'left'
         column.summary = '总计'
+      }
+      if (key === 'school') {
+        column.fixed = 'right'
       }
       if (i === keyMaps.length - 1) {
         column.width = ''
