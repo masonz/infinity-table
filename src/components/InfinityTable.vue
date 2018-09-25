@@ -55,7 +55,7 @@
              class="table__body-left"
              v-if="showLeftFixed">
           <div ref="tbodyLeftScroll"
-               class="table__body-containner">
+               class="table__body-container">
             <div ref="tbodyLeftView"
                  class="table__body-leftview">
               <div v-for="row in rowData"
@@ -85,7 +85,7 @@
         <div ref="tbodyRight"
              class="table__body-right"
              v-if="showRightFixed">
-          <div class="table__body-containner"
+          <div class="table__body-container"
                ref="tbodyRightScroll">
             <div ref="tbodyRightView"
                  class="tbody__body-rightview">
@@ -124,7 +124,7 @@
               <slot name="empty"></slot>
             </div>
             <div v-else
-                 class="table__body-containner"
+                 class="table__body-container"
                  :style="{ height: viewHeight + 'px' }">
               <div v-for="row in rowData"
                    class="infinity-table__row"
@@ -377,7 +377,9 @@ export default class InfinityTable extends Vue {
     this.setBodyStyle()
     this.setFootStyle()
     this.setEmptyStyle()
-    this.loop = requestAnimationFrame(this.onScroll)
+    this.$refs.tbodyMiddleScroll.onscroll = () => {
+      this.loop = requestAnimationFrame(this.onScroll)
+    }
     // let observer = new window.ResizeObserver(this.onResize)
     // observer.observe(<Element>this.$refs.table)
   }
@@ -492,26 +494,17 @@ export default class InfinityTable extends Vue {
     const { scrollTop, scrollLeft } = this.$refs.tbodyMiddleScroll
     if (scrollLeft !== this.recordScrollLeft) {
       this.recordScrollLeft = scrollLeft
-      if (this.$refs.theadMiddle.style.left !== `-${scrollLeft}px`) {
-        this.$refs.theadMiddle.style.left = `-${scrollLeft}px`
-      }
-      if (this.$refs.tfootMiddle.style.left !== `-${scrollLeft}px`) {
-        this.$refs.tfootMiddle.style.left = `-${scrollLeft}px`
-      }
+      this.$refs.theadMiddle.style.transform = `translate3d(-${scrollLeft}px, 0, 0)`
+      this.$refs.tfootMiddle.style.transform = `translate3d(-${scrollLeft}px, 0, 0)`
     }
 
     if (scrollTop !== this.recordScrollTop) {
       this.hoverIndex = null
       this.recordScrollTop = scrollTop
-      if (this.$refs.tbodyLeftScroll) {
-        this.$refs.tbodyLeftScroll.style.transform = `translate3d(0, -${scrollTop}px, 0)`
-      }
-      if (this.$refs.tbodyRightScroll) {
-        this.$refs.tbodyRightScroll.style.transform = `translate3d(0, -${scrollTop}px, 0)`
-      }
+      this.$refs.tbodyLeftScroll.style.transform = `translate3d(0, -${scrollTop}px, 0)`
+      this.$refs.tbodyRightScroll.style.transform = `translate3d(0, -${scrollTop}px, 0)`
       this.updateRenderRowIndex()
     }
-    this.loop = requestAnimationFrame(this.onScroll)
   }
 
   /**
@@ -690,7 +683,7 @@ $black-color: #24292e;
     position: absolute;
   }
 
-  .table__body-containner {
+  .table__body-container {
     position: relative;
   }
 
