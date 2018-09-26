@@ -1,6 +1,11 @@
 <template>
   <div id="app">
-    <infinity-table style="margin: 60px 100px;"
+    <div>
+      row: <input v-model="count" />
+      <button @click="generateData">apply</button>
+    </div>
+    <infinity-table ref="table"
+                    style="margin: 50px 100px;"
                     :data="data"
                     :column-defs="columnDefs"
                     :height="650"
@@ -41,7 +46,6 @@ import InfinityTable from './components/InfinityTable.vue'
   },
 })
 export default class App extends Vue {
-  protected data: ReadonlyArray<any> = []
 
   get columnDefs() {
     const colunms: any[] = []
@@ -88,9 +92,23 @@ export default class App extends Vue {
     }
   }
 
+  public $refs!: {
+    table: InfinityTable,
+  }
+  protected data: ReadonlyArray<any> = []
+  protected count: number = 1000
+
   public mounted() {
+    this.generateData()
+  }
+
+  public onClick(label: string) {
+    alert(label)
+  }
+
+  private generateData() {
     const data: any[] = []
-    for (let i = 1; i <= 10000; i++) {
+    for (let i = 1; i <= this.count; i++) {
       data.push({
         id: i,
         name: `学生${i}`,
@@ -105,10 +123,7 @@ export default class App extends Vue {
       })
     }
     this.data = Object.freeze(data)
-  }
-
-  public onClick(label: string) {
-    alert(label)
+    this.$refs.table.renderTable()
   }
 
   private randomGrade(): string {

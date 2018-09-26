@@ -368,7 +368,23 @@ export default class InfinityTable extends Vue {
   //#region Lifecycle
 
   // mounted
-  public async mounted() {
+  public mounted() {
+    this.renderTable()
+  }
+
+  // beforeDestroy
+  public beforeDestroy(): void {
+    cancelAnimationFrame(this.loop)
+  }
+
+  //#endregion Lifecycle
+
+  //#region Methods
+
+  /**
+   * 渲染表格
+   */
+  public async renderTable() {
     await this.$nextTick()
     this.getVisibleRowCount()
     this.calculateTotal()
@@ -383,15 +399,6 @@ export default class InfinityTable extends Vue {
     // let observer = new window.ResizeObserver(this.onResize)
     // observer.observe(<Element>this.$refs.table)
   }
-
-  // beforeDestroy
-  public beforeDestroy(): void {
-    cancelAnimationFrame(this.loop)
-  }
-
-  //#endregion Lifecycle
-
-  //#region Methods
 
   /**
    * 设置表格头部样式
