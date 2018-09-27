@@ -234,13 +234,15 @@ export default class InfinityTable extends Vue {
 
   // 左侧固定布局的列定义内容
   get leftColumnDefs(): any[] {
-    return this.columnDefs.filter((col) => col.fixed && col.fixed === 'left').map((col) => ({
-      ...col,
-      $style: {
-        flex: `1 0 ${col.width || this.defaultWidth}px`,
-        width: `${col.width || this.defaultWidth}px`,
-      },
-    }))
+    return this.columnDefs
+      .filter((col) => col.fixed && col.fixed === 'left')
+      .map((col) => ({
+        ...col,
+        $style: {
+          flex: `1 0 ${col.width || this.defaultWidth}px`,
+          width: `${col.width || this.defaultWidth}px`,
+        },
+      }))
   }
 
   // 左侧固定布局的总宽度
@@ -257,13 +259,15 @@ export default class InfinityTable extends Vue {
 
   // 右侧固定布局的列定义内容
   get rightColumnDefs(): any[] {
-    return this.columnDefs.filter((col) => col.fixed && col.fixed === 'right').map((col) => ({
-      ...col,
-      $style: {
-        flex: `1 0 ${col.width || this.defaultWidth}px`,
-        width: `${col.width || this.defaultWidth}px`,
-      },
-    }))
+    return this.columnDefs
+      .filter((col) => col.fixed && col.fixed === 'right')
+      .map((col) => ({
+        ...col,
+        $style: {
+          flex: `1 0 ${col.width || this.defaultWidth}px`,
+          width: `${col.width || this.defaultWidth}px`,
+        },
+      }))
   }
 
   // 右侧固定布局的总宽度
@@ -359,14 +363,14 @@ export default class InfinityTable extends Vue {
   //#region Lifecycle
 
   // mounted
-  public mounted() {
+  public mounted(): void {
     this.renderTable()
   }
 
   // beforeDestroy
-  public beforeDestroy(): void {
-    cancelAnimationFrame(this.loop)
-  }
+  // public beforeDestroy(): void {
+  //   cancelAnimationFrame(this.loop)
+  // }
 
   //#endregion Lifecycle
 
@@ -397,11 +401,13 @@ export default class InfinityTable extends Vue {
   public async setSpacing(): Promise<void> {
     await this.$nextTick()
 
+    // 垂直
     const { tbodyLeft, tbodyMiddle, tbodyRight } = this.$refs
     const { offsetHeight, clientHeight, clientWidth } = tbodyMiddle
     tbodyLeft.style.paddingBottom = `${offsetHeight - clientHeight}px`
     tbodyRight.style.paddingBottom = `${offsetHeight - clientHeight}px`
 
+    // 水平
     const { thead, tbody, tfoot } = this.$refs
     const paddingRight = tbody.offsetWidth - tbody.clientWidth
     thead.style.paddingRight = `${paddingRight}px`
@@ -412,14 +418,18 @@ export default class InfinityTable extends Vue {
    * 设置表格头部样式
    */
   public setHeadStyle(): void {
-    this.$refs.theadMiddleWrapper.style.marginRight = `${this.colFixedRightWidth}px`
+    this.$refs.theadMiddleWrapper.style.marginRight = `${
+      this.colFixedRightWidth
+    }px`
   }
 
   /**
    * 设置表格底部样式
    */
   public setFootStyle(): void {
-    this.$refs.tfootMiddleWrapper.style.marginRight = `${this.colFixedRightWidth}px`
+    this.$refs.tfootMiddleWrapper.style.marginRight = `${
+      this.colFixedRightWidth
+    }px`
   }
 
   /**
@@ -435,24 +445,19 @@ export default class InfinityTable extends Vue {
    * 设置表格样式
    */
   public setBodyStyle(): void {
-    const thead = this.$refs.thead as HTMLElement
-    const tbody = this.$refs.tbody as HTMLElement
-    const tfoot = this.$refs.tfoot as HTMLElement
-    if (this.showLeftFixed) {
-      this.$refs.tbodyLeftView.style.width = `${this.colFixedLeftWidth}px`
-      this.$refs.tbodyLeftView.style.height = `${this.viewHeight}px`
-    }
-    if (this.showRightFixed) {
-      this.$refs.tbodyRightView.style.width = `${this.colFixedRightWidth}px`
-      this.$refs.tbodyRightView.style.height = `${this.viewHeight}px`
-    }
-    if (thead) {
-      tbody.style.height = `${this.height - thead.clientHeight}px`
-    }
-    if (tfoot) {
-      tbody.style.height = `${tbody.clientHeight - tfoot.clientHeight}px`
-    }
-    this.$refs.tbody.style.top = thead ? `${thead.clientHeight}px` : '0'
+    const { thead, tbody, tfoot } = this.$refs
+    const { tbodyLeft, tbodyRight } = this.$refs
+    const { tbodyLeftView, tbodyRightView } = this.$refs
+    tbody.scrollTop = 0
+    tbodyLeftView.style.width = `${this.colFixedLeftWidth}px`
+    tbodyLeftView.style.height = `${this.viewHeight}px`
+    tbodyRightView.style.width = `${this.colFixedRightWidth}px`
+    tbodyRightView.style.height = `${this.viewHeight}px`
+    tbody.style.height = `${this.height - thead.clientHeight}px`
+    tbody.style.height = `${tbody.clientHeight - tfoot.clientHeight}px`
+    tbody.style.top = thead ? `${thead.clientHeight}px` : '0'
+    tbodyLeft.style.height = this.data.length ? 'auto' : '100%'
+    tbodyRight.style.height = this.data.length ? 'auto' : '100%'
   }
 
   /**
@@ -480,7 +485,7 @@ export default class InfinityTable extends Vue {
    * 获取视图内显示行数
    */
   private getVisibleRowCount(): void {
-    const thead = this.$refs.thead
+    const { thead } = this.$refs
     const visibleHeight = this.$el.clientHeight - thead.clientHeight
     this.visibleCount = Math.ceil(visibleHeight / this.rowHeight)
   }
@@ -501,32 +506,38 @@ export default class InfinityTable extends Vue {
    * 垂直滚动事件
    */
   private onVerticalScroll(): void {
+    const { tbodyMiddleScroll, tbodyMiddle } = this.$refs
     const { scrollTop } = this.$refs.tbody
-    this.$refs.tbodyMiddle.style.height = 'auto'
-    const middle = this.$refs.tbodyMiddleScroll
+
+    tbodyMiddle.style.height = 'auto'
 
     if (scrollTop !== this.recordScrollTop) {
       this.hoverIndex = null
       this.recordScrollTop = scrollTop
-      this.$refs.tbodyMiddle.style.marginTop = `${this.$refs.tbody.scrollTop}px`
-      middle.style.transform = `translate3d(0, -${this.$refs.tbody.scrollTop}px, 0)`
+      tbodyMiddle.style.marginTop = `${scrollTop}px`
+      tbodyMiddleScroll.style.transform = `translate3d(0, -${scrollTop}px, 0)`
       this.updateRenderRowIndex()
     }
-    this.$refs.tbodyMiddle.style.height = '100%'
+
+    tbodyMiddle.style.height = '100%'
   }
 
   /**
    * 水平滚动事件
    */
   private onHorizontalScroll(): void {
-    this.$refs.tbodyMiddle.style.height = 'auto'
-    const { scrollLeft } = this.$refs.tbodyMiddle
+    const { theadMiddle, tfootMiddle, tbodyMiddle } = this.$refs
+    const { scrollLeft } = tbodyMiddle
+
+    tbodyMiddle.style.height = 'auto'
+
     if (scrollLeft !== this.recordScrollLeft) {
       this.recordScrollLeft = scrollLeft
-      this.$refs.theadMiddle.style.transform = `translate3d(-${scrollLeft}px, 0, 0)`
-      this.$refs.tfootMiddle.style.transform = `translate3d(-${scrollLeft}px, 0, 0)`
+      theadMiddle.style.transform = `translate3d(-${scrollLeft}px, 0, 0)`
+      tfootMiddle.style.transform = `translate3d(-${scrollLeft}px, 0, 0)`
     }
-    this.$refs.tbodyMiddle.style.height = '100%'
+
+    tbodyMiddle.style.height = '100%'
   }
 
   /**
@@ -538,11 +549,12 @@ export default class InfinityTable extends Vue {
     const endIndex = startIndex + this.visibleCount
     for (let index = startIndex; index <= endIndex; index++) {
       if (this.data[index]) {
+        const translateY = index * this.rowHeight
         this.rowData.push(
           Object.freeze({
             ...this.data[index],
             $index: index,
-            $style: { transform: `translate3d(0, ${index * this.rowHeight}px ,0)` },
+            $style: { transform: `translate3d(0, ${translateY}px ,0)` },
           }),
         )
       }
@@ -713,6 +725,7 @@ $black-color: #24292e;
 
   .table__body-scrollview {
     width: 100%;
+    height: 100%;
   }
 
   .table__body-leftview,
