@@ -1,7 +1,7 @@
 <template>
   <div class="infinity-table-wrapper">
     <div class="infinity-table infinity-table--border"
-         :style="tableStyle">
+         :style="{ height: `${height}px` }">
 
       <!-- 表头部分 -->
       <div ref="thead"
@@ -209,13 +209,6 @@ import { Component, Prop, Vue } from 'vue-property-decorator'
 export default class InfinityTable extends Vue {
   //#region Computed
 
-  // table的动态样式
-  get tableStyle(): object {
-    return {
-      height: this.height ? this.height + 'px' : 'auto',
-    }
-  }
-
   // 主视图的列定义内容
   get columns(): any[] {
     return this.columnDefs.filter((col) => !col.fixed).map((col) => ({
@@ -315,7 +308,7 @@ export default class InfinityTable extends Vue {
   }
 
   // 表格高度
-  @Prop({ default: 0 })
+  @Prop({ default: 600 })
   private height!: number
 
   // 表格数据
@@ -454,10 +447,10 @@ export default class InfinityTable extends Vue {
       this.$refs.tbodyRightView.style.height = `${this.viewHeight}px`
     }
     if (thead) {
-      tbody.style.height = `${this.height - thead.clientHeight - 1}px`
+      tbody.style.height = `${this.height - thead.clientHeight}px`
     }
     if (tfoot) {
-      tbody.style.height = `${tbody.clientHeight - tfoot.clientHeight - 1}px`
+      tbody.style.height = `${tbody.clientHeight - tfoot.clientHeight}px`
     }
     this.$refs.tbody.style.top = thead ? `${thead.clientHeight}px` : '0'
   }
@@ -488,7 +481,7 @@ export default class InfinityTable extends Vue {
    */
   private getVisibleRowCount(): void {
     const thead = this.$refs.thead
-    const visibleHeight = this.height - thead.clientHeight
+    const visibleHeight = this.$el.clientHeight - thead.clientHeight
     this.visibleCount = Math.ceil(visibleHeight / this.rowHeight)
   }
 
