@@ -31,8 +31,7 @@
           </div>
         </div>
         <div ref="theadMiddleWrapper"
-             class="table__header-middle-wrapper"
-             :style="{ paddingRight: getPaddingRight($refs.theadMiddleWrapper) }">
+             class="table__header-middle-wrapper">
           <div ref="theadMiddle"
                class="table__header-middle">
             <div class="infinity-table__row">
@@ -182,8 +181,7 @@
           </div>
         </div>
         <div ref="tfootMiddleWrapper"
-             class="table__footer-middle-wrapper"
-             :style="{ paddingRight: getPaddingRight($refs.theadMiddleWrapper) }">
+             class="table__footer-middle-wrapper">
           <div ref="tfootMiddle"
                class="table__footer-middle">
             <div class="infinity-table__row">
@@ -316,8 +314,6 @@ export default class InfinityTable extends Vue {
     emptyContainer: HTMLElement,
   }
 
-  protected summaryData: { [key: string]: any } = {}
-
   // 表格高度
   @Prop({ default: 0 })
   private height!: number
@@ -362,6 +358,8 @@ export default class InfinityTable extends Vue {
   private recordScrollLeft: number = 0
   // requestAnimationFrame loop
   private loop: number = 0
+  // 合计数据项
+  private summaryData: { [key: string]: any } = {}
 
   //#endregion Data
 
@@ -393,11 +391,28 @@ export default class InfinityTable extends Vue {
     this.setBodyStyle()
     this.setFootStyle()
     this.setEmptyStyle()
-    this.$refs.tbodyMiddleScroll.onscroll = () => {
-      this.loop = requestAnimationFrame(this.onScroll)
-    }
+    this.setSpacing()
+    this.setScrollListener()
+
     // let observer = new window.ResizeObserver(this.onResize)
     // observer.observe(<Element>this.$refs.table)
+  }
+
+  /**
+   * 设置间距(滚动条的间距)
+   */
+  public async setSpacing(): Promise<void> {
+    await this.$nextTick()
+
+    const { tbodyLeft, tbodyMiddle, tbodyRight } = this.$refs
+    const { offsetHeight, clientHeight, clientWidth } = tbodyMiddle
+    tbodyLeft.style.paddingBottom = `${offsetHeight - clientHeight}px`
+    tbodyRight.style.paddingBottom = `${offsetHeight - clientHeight}px`
+
+    const { thead, tbody, tfoot } = this.$refs
+    const paddingRight = tbody.offsetWidth - tbody.clientWidth
+    thead.style.paddingRight = `${paddingRight}px`
+    tfoot.style.paddingRight = `${paddingRight}px`
   }
 
   /**
@@ -428,26 +443,23 @@ export default class InfinityTable extends Vue {
    */
   public setBodyStyle(): void {
     const thead = this.$refs.thead as HTMLElement
+    const tbody = this.$refs.tbody as HTMLElement
+    const tfoot = this.$refs.tfoot as HTMLElement
     if (this.showLeftFixed) {
-      this.$refs.tbodyLeftView.style.width = this.colFixedLeftWidth + 'px'
+      this.$refs.tbodyLeftView.style.width = `${this.colFixedLeftWidth}px`
       this.$refs.tbodyLeftView.style.height = `${this.viewHeight}px`
     }
     if (this.showRightFixed) {
-      this.$refs.tbodyMiddle.style.marginRight = this.$refs.tbodyRight
-        ? `-${this.$refs.tbodyRight.clientWidth}px`
-        : '0'
-      this.$refs.tbodyRightView.style.width = this.colFixedRightWidth + 'px'
+      this.$refs.tbodyRightView.style.width = `${this.colFixedRightWidth}px`
       this.$refs.tbodyRightView.style.height = `${this.viewHeight}px`
     }
-    this.$refs.tbody.style.height = this.height
-      ? `${this.height - thead.clientHeight}px`
-      : 'auto'
-    this.$refs.tbody.style.top = thead ? thead.clientHeight + 'px' : '0'
-    if (this.$refs.tfoot) {
-      this.$refs.tbody.style.paddingBottom = this.$refs.tfoot.clientHeight + 'px'
+    if (thead) {
+      tbody.style.height = `${this.height - thead.clientHeight - 1}px`
     }
-    this.$refs.tbodyLeft.style.height = this.height - thead.clientHeight + 'px'
-    this.$refs.tbodyRight.style.height = this.height - thead.clientHeight + 'px'
+    if (tfoot) {
+      tbody.style.height = `${tbody.clientHeight - tfoot.clientHeight - 1}px`
+    }
+    this.$refs.tbody.style.top = thead ? `${thead.clientHeight}px` : '0'
   }
 
   /**
@@ -472,20 +484,6 @@ export default class InfinityTable extends Vue {
   }
 
   /**
-   * 获取主视图宽度，计算差距后添加右间距
-   * 目前主要是滚动条的差异
-   * @param {number} index
-   * @returns {object} style class
-   */
-  private getPaddingRight(el: HTMLElement) {
-    let paddingRight = ''
-    if (this.$refs.tbodyMiddleScroll) {
-      paddingRight = `${el.clientWidth - this.$refs.tbodyMiddleScroll.clientWidth}px`
-    }
-    return paddingRight
-  }
-
-  /**
    * 获取视图内显示行数
    */
   private getVisibleRowCount(): void {
@@ -495,23 +493,47 @@ export default class InfinityTable extends Vue {
   }
 
   /**
-   * 滚动事件
+   * 设置滚动监听事件
    */
-  private onScroll(): void {
-    const { scrollTop, scrollLeft } = this.$refs.tbodyMiddleScroll
+  private setScrollListener(): void {
+    this.$refs.tbody.onscroll = (ev) => {
+      requestAnimationFrame(this.onVerticalScroll)
+    }
+    this.$refs.tbodyMiddle.onscroll = (ev) => {
+      requestAnimationFrame(this.onHorizontalScroll)
+    }
+  }
+
+  /**
+   * 垂直滚动事件
+   */
+  private onVerticalScroll(): void {
+    const { scrollTop } = this.$refs.tbody
+    this.$refs.tbodyMiddle.style.height = 'auto'
+    const middle = this.$refs.tbodyMiddleScroll
+
+    if (scrollTop !== this.recordScrollTop) {
+      this.hoverIndex = null
+      this.recordScrollTop = scrollTop
+      this.$refs.tbodyMiddle.style.marginTop = `${this.$refs.tbody.scrollTop}px`
+      middle.style.transform = `translate3d(0, -${this.$refs.tbody.scrollTop}px, 0)`
+      this.updateRenderRowIndex()
+    }
+    this.$refs.tbodyMiddle.style.height = '100%'
+  }
+
+  /**
+   * 水平滚动事件
+   */
+  private onHorizontalScroll(): void {
+    this.$refs.tbodyMiddle.style.height = 'auto'
+    const { scrollLeft } = this.$refs.tbodyMiddle
     if (scrollLeft !== this.recordScrollLeft) {
       this.recordScrollLeft = scrollLeft
       this.$refs.theadMiddle.style.transform = `translate3d(-${scrollLeft}px, 0, 0)`
       this.$refs.tfootMiddle.style.transform = `translate3d(-${scrollLeft}px, 0, 0)`
     }
-
-    if (scrollTop !== this.recordScrollTop) {
-      this.hoverIndex = null
-      this.recordScrollTop = scrollTop
-      this.$refs.tbodyLeftScroll.style.transform = `translate3d(0, -${scrollTop}px, 0)`
-      this.$refs.tbodyRightScroll.style.transform = `translate3d(0, -${scrollTop}px, 0)`
-      this.updateRenderRowIndex()
-    }
+    this.$refs.tbodyMiddle.style.height = '100%'
   }
 
   /**
@@ -573,14 +595,11 @@ $black-color: #24292e;
 
   * {
     box-sizing: border-box;
-    cursor: default;
-    user-select: none;
   }
 }
 
 .infinity-table {
   height: 100%;
-  overflow: hidden;
   position: relative;
 }
 
@@ -651,6 +670,9 @@ $black-color: #24292e;
 .infinity-table__body {
   position: absolute;
   width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
 
   .table__body-left,
   .table__body-middle,
@@ -663,7 +685,8 @@ $black-color: #24292e;
   .table__body-middle {
     position: relative;
     display: block;
-    overflow: auto;
+    overflow-x: auto;
+    overflow-y: hidden;
     height: 100%;
   }
 
@@ -692,11 +715,11 @@ $black-color: #24292e;
 
   .table__body-container {
     position: relative;
+    width: 100%;
   }
 
   .table__body-scrollview {
-    height: 100%;
-    overflow: auto;
+    width: 100%;
   }
 
   .table__body-leftview,

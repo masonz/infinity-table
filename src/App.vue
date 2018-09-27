@@ -46,7 +46,6 @@ import InfinityTable from './components/InfinityTable.vue'
   },
 })
 export default class App extends Vue {
-
   get columnDefs() {
     const colunms: any[] = []
     const keyMaps = Object.keys(this.subjectKeyMaps)
