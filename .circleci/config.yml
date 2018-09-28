@@ -43,8 +43,10 @@ jobs:
       # run unit tests!
       - run: yarn test:unit
 
-      # compiles and minifies for production
-      - run: yarn build
-
       # deploy gh-pages
-      - run: npx gh-pages -d dist
+      - run:
+          name: Prepare shell commands
+          command: cp .scripts/deploy.sh ../ && chmod +x ../deploy.sh
+      - run:
+          name: Run deploy scripts
+          command: ../deploy.sh
