@@ -51,8 +51,7 @@
       <div ref="tbody"
            class="infinity-table__body">
         <div ref="tbodyLeft"
-             class="table__body-left"
-             v-if="showLeftFixed">
+             class="table__body-left">
           <div ref="tbodyLeftScroll"
                class="table__body-container">
             <div ref="tbodyLeftView"
@@ -82,8 +81,7 @@
           </div>
         </div>
         <div ref="tbodyRight"
-             class="table__body-right"
-             v-if="showRightFixed">
+             class="table__body-right">
           <div class="table__body-container"
                ref="tbodyRightScroll">
             <div ref="tbodyRightView"
@@ -367,11 +365,6 @@ export default class InfinityTable extends Vue {
     this.renderTable()
   }
 
-  // beforeDestroy
-  // public beforeDestroy(): void {
-  //   cancelAnimationFrame(this.loop)
-  // }
-
   //#endregion Lifecycle
 
   //#region Methods
@@ -458,6 +451,12 @@ export default class InfinityTable extends Vue {
     tbody.style.top = thead ? `${thead.clientHeight}px` : '0'
     tbodyLeft.style.height = this.data.length ? 'auto' : '100%'
     tbodyRight.style.height = this.data.length ? 'auto' : '100%'
+    this.showLeftFixed
+      ? tbodyLeft.classList.add('border')
+      : tbodyLeft.classList.remove('border')
+    this.showRightFixed
+      ? tbodyRight.classList.add('border')
+      : tbodyRight.classList.remove('border')
   }
 
   /**
@@ -487,7 +486,8 @@ export default class InfinityTable extends Vue {
   private getVisibleRowCount(): void {
     const { thead } = this.$refs
     const visibleHeight = this.$el.clientHeight - thead.clientHeight
-    this.visibleCount = Math.ceil(visibleHeight / this.rowHeight)
+    const count = visibleHeight / this.rowHeight
+    this.visibleCount = Math.ceil(count) || this.data.length
   }
 
   /**
@@ -495,9 +495,11 @@ export default class InfinityTable extends Vue {
    */
   private setScrollListener(): void {
     this.$refs.tbody.onscroll = (ev) => {
+      this.$refs.tbodyMiddle.style.height = 'auto'
       requestAnimationFrame(this.onVerticalScroll)
     }
     this.$refs.tbodyMiddle.onscroll = (ev) => {
+      this.$refs.tbodyMiddle.style.height = 'auto'
       requestAnimationFrame(this.onHorizontalScroll)
     }
   }
@@ -508,8 +510,6 @@ export default class InfinityTable extends Vue {
   private onVerticalScroll(): void {
     const { tbodyMiddleScroll, tbodyMiddle } = this.$refs
     const { scrollTop } = this.$refs.tbody
-
-    tbodyMiddle.style.height = 'auto'
 
     if (scrollTop !== this.recordScrollTop) {
       this.hoverIndex = null
@@ -528,8 +528,6 @@ export default class InfinityTable extends Vue {
   private onHorizontalScroll(): void {
     const { theadMiddle, tfootMiddle, tbodyMiddle } = this.$refs
     const { scrollLeft } = tbodyMiddle
-
-    tbodyMiddle.style.height = 'auto'
 
     if (scrollLeft !== this.recordScrollLeft) {
       this.recordScrollLeft = scrollLeft
@@ -706,12 +704,18 @@ $black-color: #24292e;
 
   .table__body-left {
     float: left;
-    border-right: 1px solid $border-color;
+
+    &.border {
+      border-right: 1px solid $border-color;
+    }
   }
 
   .table__body-right {
     float: right;
-    border-left: 1px solid $border-color;
+
+    &.border {
+      border-left: 1px solid $border-color;
+    }
   }
 
   .infinity-table__row {
