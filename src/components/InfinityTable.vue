@@ -1,7 +1,7 @@
 <template>
   <div class="infinity-table-wrapper">
     <div class="infinity-table infinity-table--border"
-         :style="tableStyle">
+         :style="{ height: `${height}px` }">
 
       <!-- 表头部分 -->
       <div ref="thead"
@@ -31,8 +31,7 @@
           </div>
         </div>
         <div ref="theadMiddleWrapper"
-             class="table__header-middle-wrapper"
-             :style="{ paddingRight: getPaddingRight($refs.theadMiddleWrapper) }">
+             class="table__header-middle-wrapper">
           <div ref="theadMiddle"
                class="table__header-middle">
             <div class="infinity-table__row">
@@ -52,8 +51,7 @@
       <div ref="tbody"
            class="infinity-table__body">
         <div ref="tbodyLeft"
-             class="table__body-left"
-             v-if="showLeftFixed">
+             class="table__body-left">
           <div ref="tbodyLeftScroll"
                class="table__body-container">
             <div ref="tbodyLeftView"
@@ -83,8 +81,7 @@
           </div>
         </div>
         <div ref="tbodyRight"
-             class="table__body-right"
-             v-if="showRightFixed">
+             class="table__body-right">
           <div class="table__body-container"
                ref="tbodyRightScroll">
             <div ref="tbodyRightView"
@@ -182,8 +179,7 @@
           </div>
         </div>
         <div ref="tfootMiddleWrapper"
-             class="table__footer-middle-wrapper"
-             :style="{ paddingRight: getPaddingRight($refs.theadMiddleWrapper) }">
+             class="table__footer-middle-wrapper">
           <div ref="tfootMiddle"
                class="table__footer-middle">
             <div class="infinity-table__row">
@@ -211,13 +207,6 @@ import { Component, Prop, Vue } from 'vue-property-decorator'
 export default class InfinityTable extends Vue {
   //#region Computed
 
-  // table的动态样式
-  get tableStyle(): object {
-    return {
-      height: this.height ? this.height + 'px' : 'auto',
-    }
-  }
-
   // 主视图的列定义内容
   get columns(): any[] {
     return this.columnDefs.filter((col) => !col.fixed).map((col) => ({
@@ -243,13 +232,15 @@ export default class InfinityTable extends Vue {
 
   // 左侧固定布局的列定义内容
   get leftColumnDefs(): any[] {
-    return this.columnDefs.filter((col) => col.fixed && col.fixed === 'left').map((col) => ({
-      ...col,
-      $style: {
-        flex: `1 0 ${col.width || this.defaultWidth}px`,
-        width: `${col.width || this.defaultWidth}px`,
-      },
-    }))
+    return this.columnDefs
+      .filter((col) => col.fixed && col.fixed === 'left')
+      .map((col) => ({
+        ...col,
+        $style: {
+          flex: `1 0 ${col.width || this.defaultWidth}px`,
+          width: `${col.width || this.defaultWidth}px`,
+        },
+      }))
   }
 
   // 左侧固定布局的总宽度
@@ -266,13 +257,15 @@ export default class InfinityTable extends Vue {
 
   // 右侧固定布局的列定义内容
   get rightColumnDefs(): any[] {
-    return this.columnDefs.filter((col) => col.fixed && col.fixed === 'right').map((col) => ({
-      ...col,
-      $style: {
-        flex: `1 0 ${col.width || this.defaultWidth}px`,
-        width: `${col.width || this.defaultWidth}px`,
-      },
-    }))
+    return this.columnDefs
+      .filter((col) => col.fixed && col.fixed === 'right')
+      .map((col) => ({
+        ...col,
+        $style: {
+          flex: `1 0 ${col.width || this.defaultWidth}px`,
+          width: `${col.width || this.defaultWidth}px`,
+        },
+      }))
   }
 
   // 右侧固定布局的总宽度
@@ -316,10 +309,8 @@ export default class InfinityTable extends Vue {
     emptyContainer: HTMLElement,
   }
 
-  protected summaryData: { [key: string]: any } = {}
-
   // 表格高度
-  @Prop({ default: 0 })
+  @Prop({ default: 600 })
   private height!: number
 
   // 表格数据
@@ -362,19 +353,16 @@ export default class InfinityTable extends Vue {
   private recordScrollLeft: number = 0
   // requestAnimationFrame loop
   private loop: number = 0
+  // 合计数据项
+  private summaryData: { [key: string]: any } = {}
 
   //#endregion Data
 
   //#region Lifecycle
 
   // mounted
-  public mounted() {
+  public mounted(): void {
     this.renderTable()
-  }
-
-  // beforeDestroy
-  public beforeDestroy(): void {
-    cancelAnimationFrame(this.loop)
   }
 
   //#endregion Lifecycle
@@ -393,25 +381,48 @@ export default class InfinityTable extends Vue {
     this.setBodyStyle()
     this.setFootStyle()
     this.setEmptyStyle()
-    this.$refs.tbodyMiddleScroll.onscroll = () => {
-      this.loop = requestAnimationFrame(this.onScroll)
-    }
+    this.setSpacing()
+    this.setScrollListener()
+
     // let observer = new window.ResizeObserver(this.onResize)
     // observer.observe(<Element>this.$refs.table)
+  }
+
+  /**
+   * 设置间距(滚动条的间距)
+   */
+  public async setSpacing(): Promise<void> {
+    await this.$nextTick()
+
+    // 垂直
+    const { tbodyLeft, tbodyMiddle, tbodyRight } = this.$refs
+    const { offsetHeight, clientHeight, clientWidth } = tbodyMiddle
+    tbodyLeft.style.paddingBottom = `${offsetHeight - clientHeight}px`
+    tbodyRight.style.paddingBottom = `${offsetHeight - clientHeight}px`
+
+    // 水平
+    const { thead, tbody, tfoot } = this.$refs
+    const paddingRight = tbody.offsetWidth - tbody.clientWidth
+    thead.style.paddingRight = `${paddingRight}px`
+    tfoot.style.paddingRight = `${paddingRight}px`
   }
 
   /**
    * 设置表格头部样式
    */
   public setHeadStyle(): void {
-    this.$refs.theadMiddleWrapper.style.marginRight = `${this.colFixedRightWidth}px`
+    this.$refs.theadMiddleWrapper.style.marginRight = `${
+      this.colFixedRightWidth
+    }px`
   }
 
   /**
    * 设置表格底部样式
    */
   public setFootStyle(): void {
-    this.$refs.tfootMiddleWrapper.style.marginRight = `${this.colFixedRightWidth}px`
+    this.$refs.tfootMiddleWrapper.style.marginRight = `${
+      this.colFixedRightWidth
+    }px`
   }
 
   /**
@@ -427,27 +438,25 @@ export default class InfinityTable extends Vue {
    * 设置表格样式
    */
   public setBodyStyle(): void {
-    const thead = this.$refs.thead as HTMLElement
-    if (this.showLeftFixed) {
-      this.$refs.tbodyLeftView.style.width = this.colFixedLeftWidth + 'px'
-      this.$refs.tbodyLeftView.style.height = `${this.viewHeight}px`
-    }
-    if (this.showRightFixed) {
-      this.$refs.tbodyMiddle.style.marginRight = this.$refs.tbodyRight
-        ? `-${this.$refs.tbodyRight.clientWidth}px`
-        : '0'
-      this.$refs.tbodyRightView.style.width = this.colFixedRightWidth + 'px'
-      this.$refs.tbodyRightView.style.height = `${this.viewHeight}px`
-    }
-    this.$refs.tbody.style.height = this.height
-      ? `${this.height - thead.clientHeight}px`
-      : 'auto'
-    this.$refs.tbody.style.top = thead ? thead.clientHeight + 'px' : '0'
-    if (this.$refs.tfoot) {
-      this.$refs.tbody.style.paddingBottom = this.$refs.tfoot.clientHeight + 'px'
-    }
-    this.$refs.tbodyLeft.style.height = this.height - thead.clientHeight + 'px'
-    this.$refs.tbodyRight.style.height = this.height - thead.clientHeight + 'px'
+    const { thead, tbody, tfoot } = this.$refs
+    const { tbodyLeft, tbodyRight } = this.$refs
+    const { tbodyLeftView, tbodyRightView } = this.$refs
+    tbody.scrollTop = 0
+    tbodyLeftView.style.width = `${this.colFixedLeftWidth}px`
+    tbodyLeftView.style.height = `${this.viewHeight}px`
+    tbodyRightView.style.width = `${this.colFixedRightWidth}px`
+    tbodyRightView.style.height = `${this.viewHeight}px`
+    tbody.style.height = `${this.height - thead.clientHeight}px`
+    tbody.style.height = `${tbody.clientHeight - tfoot.clientHeight}px`
+    tbody.style.top = thead ? `${thead.clientHeight}px` : '0'
+    tbodyLeft.style.height = this.data.length ? 'auto' : '100%'
+    tbodyRight.style.height = this.data.length ? 'auto' : '100%'
+    this.showLeftFixed
+      ? tbodyLeft.classList.add('border')
+      : tbodyLeft.classList.remove('border')
+    this.showRightFixed
+      ? tbodyRight.classList.add('border')
+      : tbodyRight.classList.remove('border')
   }
 
   /**
@@ -472,46 +481,61 @@ export default class InfinityTable extends Vue {
   }
 
   /**
-   * 获取主视图宽度，计算差距后添加右间距
-   * 目前主要是滚动条的差异
-   * @param {number} index
-   * @returns {object} style class
-   */
-  private getPaddingRight(el: HTMLElement) {
-    let paddingRight = ''
-    if (this.$refs.tbodyMiddleScroll) {
-      paddingRight = `${el.clientWidth - this.$refs.tbodyMiddleScroll.clientWidth}px`
-    }
-    return paddingRight
-  }
-
-  /**
    * 获取视图内显示行数
    */
   private getVisibleRowCount(): void {
-    const thead = this.$refs.thead
-    const visibleHeight = this.height - thead.clientHeight
-    this.visibleCount = Math.ceil(visibleHeight / this.rowHeight)
+    const { thead } = this.$refs
+    const visibleHeight = this.$el.clientHeight - thead.clientHeight
+    const count = visibleHeight / this.rowHeight
+    this.visibleCount = Math.ceil(count) || this.data.length
   }
 
   /**
-   * 滚动事件
+   * 设置滚动监听事件
    */
-  private onScroll(): void {
-    const { scrollTop, scrollLeft } = this.$refs.tbodyMiddleScroll
-    if (scrollLeft !== this.recordScrollLeft) {
-      this.recordScrollLeft = scrollLeft
-      this.$refs.theadMiddle.style.transform = `translate3d(-${scrollLeft}px, 0, 0)`
-      this.$refs.tfootMiddle.style.transform = `translate3d(-${scrollLeft}px, 0, 0)`
+  private setScrollListener(): void {
+    this.$refs.tbody.onscroll = (ev) => {
+      this.$refs.tbodyMiddle.style.height = 'auto'
+      requestAnimationFrame(this.onVerticalScroll)
     }
+    this.$refs.tbodyMiddle.onscroll = (ev) => {
+      this.$refs.tbodyMiddle.style.height = 'auto'
+      requestAnimationFrame(this.onHorizontalScroll)
+    }
+  }
+
+  /**
+   * 垂直滚动事件
+   */
+  private onVerticalScroll(): void {
+    const { tbodyMiddleScroll, tbodyMiddle } = this.$refs
+    const { scrollTop } = this.$refs.tbody
 
     if (scrollTop !== this.recordScrollTop) {
       this.hoverIndex = null
       this.recordScrollTop = scrollTop
-      this.$refs.tbodyLeftScroll.style.transform = `translate3d(0, -${scrollTop}px, 0)`
-      this.$refs.tbodyRightScroll.style.transform = `translate3d(0, -${scrollTop}px, 0)`
+      tbodyMiddle.style.marginTop = `${scrollTop}px`
+      tbodyMiddleScroll.style.transform = `translate3d(0, -${scrollTop}px, 0)`
       this.updateRenderRowIndex()
     }
+
+    tbodyMiddle.style.height = '100%'
+  }
+
+  /**
+   * 水平滚动事件
+   */
+  private onHorizontalScroll(): void {
+    const { theadMiddle, tfootMiddle, tbodyMiddle } = this.$refs
+    const { scrollLeft } = tbodyMiddle
+
+    if (scrollLeft !== this.recordScrollLeft) {
+      this.recordScrollLeft = scrollLeft
+      theadMiddle.style.transform = `translate3d(-${scrollLeft}px, 0, 0)`
+      tfootMiddle.style.transform = `translate3d(-${scrollLeft}px, 0, 0)`
+    }
+
+    tbodyMiddle.style.height = '100%'
   }
 
   /**
@@ -523,11 +547,12 @@ export default class InfinityTable extends Vue {
     const endIndex = startIndex + this.visibleCount
     for (let index = startIndex; index <= endIndex; index++) {
       if (this.data[index]) {
+        const translateY = index * this.rowHeight
         this.rowData.push(
           Object.freeze({
             ...this.data[index],
             $index: index,
-            $style: { transform: `translate3d(0, ${index * this.rowHeight}px ,0)` },
+            $style: { transform: `translate3d(0, ${translateY}px ,0)` },
           }),
         )
       }
@@ -573,14 +598,11 @@ $black-color: #24292e;
 
   * {
     box-sizing: border-box;
-    cursor: default;
-    user-select: none;
   }
 }
 
 .infinity-table {
   height: 100%;
-  overflow: hidden;
   position: relative;
 }
 
@@ -651,6 +673,9 @@ $black-color: #24292e;
 .infinity-table__body {
   position: absolute;
   width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
 
   .table__body-left,
   .table__body-middle,
@@ -663,7 +688,8 @@ $black-color: #24292e;
   .table__body-middle {
     position: relative;
     display: block;
-    overflow: auto;
+    overflow-x: auto;
+    overflow-y: hidden;
     height: 100%;
   }
 
@@ -678,12 +704,18 @@ $black-color: #24292e;
 
   .table__body-left {
     float: left;
-    border-right: 1px solid $border-color;
+
+    &.border {
+      border-right: 1px solid $border-color;
+    }
   }
 
   .table__body-right {
     float: right;
-    border-left: 1px solid $border-color;
+
+    &.border {
+      border-left: 1px solid $border-color;
+    }
   }
 
   .infinity-table__row {
@@ -692,11 +724,12 @@ $black-color: #24292e;
 
   .table__body-container {
     position: relative;
+    width: 100%;
   }
 
   .table__body-scrollview {
+    width: 100%;
     height: 100%;
-    overflow: auto;
   }
 
   .table__body-leftview,
