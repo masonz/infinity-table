@@ -292,9 +292,13 @@ export default class InfinityTable extends Vue {
   // $refs declare
   public $refs!: {
     thead: HTMLElement
+    theadLeft: HTMLElement
+    theadRight: HTMLElement
     theadMiddle: HTMLElement
     theadMiddleWrapper: HTMLElement
     tfoot: HTMLElement
+    tfootLeft: HTMLElement
+    tfootRight: HTMLElement
     tfootMiddle: HTMLElement
     tfootMiddleWrapper: HTMLElement
     tbody: HTMLElement
@@ -353,6 +357,8 @@ export default class InfinityTable extends Vue {
   private recordScrollLeft: number = 0
   // requestAnimationFrame loop
   private loop: number = 0
+  // timer
+  private timer: number = 0
   // 合计数据项
   private summaryData: { [key: string]: any } = {}
 
@@ -372,57 +378,35 @@ export default class InfinityTable extends Vue {
   /**
    * 渲染表格
    */
-  public async renderTable() {
-    await this.$nextTick()
-    this.getVisibleRowCount()
-    this.calculateTotal()
-    this.updateRenderRowIndex()
-    this.setHeadStyle()
-    this.setBodyStyle()
-    this.setFootStyle()
-    this.setEmptyStyle()
-    this.setSpacing()
-    this.setScrollListener()
-
-    // let observer = new window.ResizeObserver(this.onResize)
-    // observer.observe(<Element>this.$refs.table)
+  public renderTable(): void {
+    this.$nextTick(() => {
+      this.getVisibleRowCount()
+      this.calculateTotal()
+      this.updateRenderRowIndex()
+      this.setBodyStyle()
+      this.setEmptyStyle()
+      this.setSpacing()
+      this.setScrollListener()
+    })
   }
 
   /**
    * 设置间距(滚动条的间距)
    */
-  public async setSpacing(): Promise<void> {
-    await this.$nextTick()
+  public setSpacing(): void {
+    setTimeout(() => {
+      // 垂直
+      const { tbodyLeft, tbodyMiddle, tbodyRight } = this.$refs
+      const { offsetHeight, clientHeight } = tbodyMiddle
+      tbodyLeft.style.marginBottom = `${offsetHeight - clientHeight}px`
+      tbodyRight.style.marginBottom = `${offsetHeight - clientHeight}px`
 
-    // 垂直
-    const { tbodyLeft, tbodyMiddle, tbodyRight } = this.$refs
-    const { offsetHeight, clientHeight, clientWidth } = tbodyMiddle
-    tbodyLeft.style.paddingBottom = `${offsetHeight - clientHeight}px`
-    tbodyRight.style.paddingBottom = `${offsetHeight - clientHeight}px`
-
-    // 水平
-    const { thead, tbody, tfoot } = this.$refs
-    const paddingRight = tbody.offsetWidth - tbody.clientWidth
-    thead.style.paddingRight = `${paddingRight}px`
-    tfoot.style.paddingRight = `${paddingRight}px`
-  }
-
-  /**
-   * 设置表格头部样式
-   */
-  public setHeadStyle(): void {
-    this.$refs.theadMiddleWrapper.style.marginRight = `${
-      this.colFixedRightWidth
-    }px`
-  }
-
-  /**
-   * 设置表格底部样式
-   */
-  public setFootStyle(): void {
-    this.$refs.tfootMiddleWrapper.style.marginRight = `${
-      this.colFixedRightWidth
-    }px`
+      // 水平
+      const { thead, tbody, tfoot } = this.$refs
+      const paddingRight = tbody.offsetWidth - tbody.clientWidth
+      thead.style.paddingRight = `${paddingRight}px`
+      tfoot.style.paddingRight = `${paddingRight}px`
+    }, 0)
   }
 
   /**
@@ -441,6 +425,7 @@ export default class InfinityTable extends Vue {
     const { thead, tbody, tfoot } = this.$refs
     const { tbodyLeft, tbodyRight } = this.$refs
     const { tbodyLeftView, tbodyRightView } = this.$refs
+    tbody.style.overflowY = this.data.length ? 'auto' : 'hidden'
     tbody.scrollTop = 0
     tbodyLeftView.style.width = `${this.colFixedLeftWidth}px`
     tbodyLeftView.style.height = `${this.viewHeight}px`
@@ -457,6 +442,8 @@ export default class InfinityTable extends Vue {
     this.showRightFixed
       ? tbodyRight.classList.add('border')
       : tbodyRight.classList.remove('border')
+    this.renderHorizontalScrollbar()
+    this.setFixedStyle()
   }
 
   /**
@@ -499,7 +486,6 @@ export default class InfinityTable extends Vue {
       requestAnimationFrame(this.onVerticalScroll)
     }
     this.$refs.tbodyMiddle.onscroll = (ev) => {
-      this.$refs.tbodyMiddle.style.height = 'auto'
       requestAnimationFrame(this.onHorizontalScroll)
     }
   }
@@ -508,18 +494,13 @@ export default class InfinityTable extends Vue {
    * 垂直滚动事件
    */
   private onVerticalScroll(): void {
-    const { tbodyMiddleScroll, tbodyMiddle } = this.$refs
     const { scrollTop } = this.$refs.tbody
 
     if (scrollTop !== this.recordScrollTop) {
-      this.hoverIndex = null
       this.recordScrollTop = scrollTop
-      tbodyMiddle.style.marginTop = `${scrollTop}px`
-      tbodyMiddleScroll.style.transform = `translate3d(0, -${scrollTop}px, 0)`
       this.updateRenderRowIndex()
+      this.renderHorizontalScrollbar()
     }
-
-    tbodyMiddle.style.height = '100%'
   }
 
   /**
@@ -533,9 +514,52 @@ export default class InfinityTable extends Vue {
       this.recordScrollLeft = scrollLeft
       theadMiddle.style.transform = `translate3d(-${scrollLeft}px, 0, 0)`
       tfootMiddle.style.transform = `translate3d(-${scrollLeft}px, 0, 0)`
+      this.setFixedStyle()
+    }
+  }
+
+  /**
+   * 渲染水平滚动条
+   */
+  private renderHorizontalScrollbar(): void {
+    const { tbodyMiddle, tbody } = this.$refs
+    const { scrollTop } = this.$refs.tbody
+
+    // Delay setting height for render horizontal scrollbar
+    window.clearTimeout(this.timer)
+    this.timer = window.setTimeout(() => {
+      tbodyMiddle.style.height = `${tbody.clientHeight + scrollTop}px`
+    }, 500)
+  }
+
+  /**
+   * 设置固定列的样式
+   */
+  private setFixedStyle(): void {
+    const { theadLeft, theadRight } = this.$refs
+    const { tfootLeft, tfootRight } = this.$refs
+    const { tbodyLeft, tbodyRight, tbodyMiddle } = this.$refs
+    const { scrollLeft } = tbodyMiddle
+
+    if (scrollLeft > 0) {
+      theadLeft.classList.add('scrolling')
+      tfootLeft.classList.add('scrolling')
+      tbodyLeft.classList.add('scrolling')
+    } else {
+      theadLeft.classList.remove('scrolling')
+      tfootLeft.classList.remove('scrolling')
+      tbodyLeft.classList.remove('scrolling')
     }
 
-    tbodyMiddle.style.height = '100%'
+    if (scrollLeft + tbodyMiddle.clientWidth < tbodyMiddle.scrollWidth) {
+      theadRight.classList.add('scrolling')
+      tbodyRight.classList.add('scrolling')
+      tfootRight.classList.add('scrolling')
+    } else {
+      theadRight.classList.remove('scrolling')
+      tbodyRight.classList.remove('scrolling')
+      tfootRight.classList.remove('scrolling')
+    }
   }
 
   /**
@@ -674,7 +698,6 @@ $black-color: #24292e;
   position: absolute;
   width: 100%;
   height: 100%;
-  overflow-y: auto;
   overflow-x: hidden;
 
   .table__body-left,
@@ -690,7 +713,6 @@ $black-color: #24292e;
     display: block;
     overflow-x: auto;
     overflow-y: hidden;
-    height: 100%;
   }
 
   .table__body-left,
@@ -699,6 +721,10 @@ $black-color: #24292e;
 
     .infinity-table__row {
       width: initial;
+    }
+
+    &.scrolling {
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.12);
     }
   }
 
@@ -730,6 +756,7 @@ $black-color: #24292e;
   .table__body-scrollview {
     width: 100%;
     height: 100%;
+    position: relative;
   }
 
   .table__body-leftview,
@@ -810,5 +837,16 @@ $black-color: #24292e;
   height: 100%;
   align-items: center;
   justify-content: center;
+}
+
+.table__header-left,
+.table__header-right,
+.table__body-left,
+.table__body-right,
+.table__footer-left,
+.table__footer-right {
+  &.scrolling {
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.12);
+  }
 }
 </style>
