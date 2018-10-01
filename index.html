@@ -1,0 +1,28 @@
+<!DOCTYPE html><html lang=en><head><meta charset=utf-8><meta http-equiv=X-UA-Compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1"><link rel=icon href=favicon.ico><title>infinity-table</title><link href=css/app.59554d73.css rel=preload as=style><link href=js/app.656406c2.js rel=preload as=script><link href=js/chunk-vendors.c0f20dfa.js rel=preload as=script><link href=css/app.59554d73.css rel=stylesheet></head><body><noscript><strong>We're sorry but infinity-table doesn't work properly without JavaScript enabled. Please enable it to continue.</strong></noscript><div id=app></div><script src=https://unpkg.com/stats.js@0.17.0/build/stats.min.js></script><script>function numDomNodes(node) {
+      if (!node.children || node.children.length == 0)
+        return 0;
+      var childrenCount = Array.from(node.children).map(numDomNodes);
+      return node.children.length + childrenCount.reduce(function (p, c) { return p + c; }, 0);
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      var stats = new Stats();
+      var memoryStats = new Stats();
+      var domPanel = new Stats.Panel('DOM Nodes', '#0ff', '#002');
+      stats.addPanel(domPanel);
+      stats.showPanel(3);
+      memoryStats.showPanel(2);
+      memoryStats.dom.style.left = '80px';
+      document.body.appendChild(stats.dom);
+      document.body.appendChild(memoryStats.dom);
+
+      function animate() {
+        domPanel.update(numDomNodes(document.body), 2000);
+        memoryStats.begin();
+        // monitored code goes here
+        memoryStats.end();
+        requestAnimationFrame(animate);
+      }
+
+      requestAnimationFrame(animate);
+    });</script><script src=js/chunk-vendors.c0f20dfa.js></script><script src=js/app.656406c2.js></script></body></html>
