@@ -353,6 +353,8 @@ export default class InfinityTable extends Vue {
   private recordScrollLeft: number = 0
   // requestAnimationFrame loop
   private loop: number = 0
+  // timer
+  private timer: number = 0
   // 合计数据项
   private summaryData: { [key: string]: any } = {}
 
@@ -499,7 +501,6 @@ export default class InfinityTable extends Vue {
       requestAnimationFrame(this.onVerticalScroll)
     }
     this.$refs.tbodyMiddle.onscroll = (ev) => {
-      this.$refs.tbodyMiddle.style.height = 'auto'
       requestAnimationFrame(this.onHorizontalScroll)
     }
   }
@@ -508,18 +509,20 @@ export default class InfinityTable extends Vue {
    * 垂直滚动事件
    */
   private onVerticalScroll(): void {
-    const { tbodyMiddleScroll, tbodyMiddle } = this.$refs
+    const { tbodyMiddleScroll, tbodyMiddle, tbody } = this.$refs
     const { scrollTop } = this.$refs.tbody
 
     if (scrollTop !== this.recordScrollTop) {
       this.hoverIndex = null
       this.recordScrollTop = scrollTop
-      tbodyMiddle.style.marginTop = `${scrollTop}px`
-      tbodyMiddleScroll.style.transform = `translate3d(0, -${scrollTop}px, 0)`
       this.updateRenderRowIndex()
     }
 
-    tbodyMiddle.style.height = '100%'
+    // Delay setting height for render horizontal scrollbar
+    window.clearTimeout(this.timer)
+    this.timer = window.setTimeout(() => {
+      tbodyMiddle.style.height = `${tbody.clientHeight + scrollTop}px`
+    }, 500)
   }
 
   /**
@@ -534,8 +537,6 @@ export default class InfinityTable extends Vue {
       theadMiddle.style.transform = `translate3d(-${scrollLeft}px, 0, 0)`
       tfootMiddle.style.transform = `translate3d(-${scrollLeft}px, 0, 0)`
     }
-
-    tbodyMiddle.style.height = '100%'
   }
 
   /**
@@ -690,8 +691,19 @@ $black-color: #24292e;
     display: block;
     overflow-x: auto;
     overflow-y: hidden;
-    height: 100%;
+    // height: 100%;
   }
+
+  // .scroll-bar {
+  //   position: absolute;
+  //   top: 0;
+  //   left: 0;
+  //   width: 1200px;
+  //   // height: 500px;
+  //   overflow-x: auto;
+  //   overflow-y: hidden;
+  //   display: block;
+  // }
 
   .table__body-left,
   .table__body-right {
@@ -730,6 +742,7 @@ $black-color: #24292e;
   .table__body-scrollview {
     width: 100%;
     height: 100%;
+    position: relative;
   }
 
   .table__body-leftview,
